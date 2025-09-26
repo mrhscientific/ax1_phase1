@@ -1,0 +1,11 @@
+/build/
+/CMakeFiles/
+/CMakeCache.txt
+/ax1
+*.o
+*.mod
+*.obj
+*.exe
+*.out
+*.swp
+.DS_Store
