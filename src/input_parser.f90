@@ -4,6 +4,7 @@ module input_parser
   use utils, only: shell_volume
   use eos_table
   use thermo, only: attach_tables, tbl
+  use xs_lib, only: set_hdf5, load_if_available
   implicit none
 contains
   subroutine load_deck(filename, st, ctrl)
@@ -43,6 +44,15 @@ contains
         case ("dt"); read(sval,*) ctrl%dt
         case ("hydro_per_neut"); read(sval,*) ctrl%hydro_per_neut
         case ("cfl"); read(sval,*) ctrl%cfl
+        case ("Sn"); read(sval,*) ctrl%Sn_order
+        case ("use_dsa");
+          if (trim(adjustl(sval))=="1" .or. trim(adjustl(sval))=="true") then
+            ctrl%use_dsa = .true.
+          else
+            ctrl%use_dsa = .false.
+          end if
+        case ("upscatter"); ctrl%upscatter = trim(sval)
+        case ("upscatter_scale"); read(sval,*) ctrl%upscatter_scale
         end select
 
       case ("[geometry]")
@@ -116,6 +126,18 @@ contains
         end if
         st%sh(idx3)%rbar = 0.5_rk*(st%sh(idx3)%r_in + st%sh(idx3)%r_out)
         st%sh(idx3)%mass = rho0 * shell_volume(st%sh(idx3)%r_in, st%sh(idx3)%r_out)
+      case ("[xslib]")
+        ! Format: hdf5 <path> <temperature_K>
+        read(line,*) key
+        if (trim(key) == 'hdf5') then
+          kpos = index(line, ' ')
+          if (kpos>0) then
+            p2 = adjustl(line(kpos+1:))
+            ! Extract trailing temperature if present
+            abs_path = trim(p2)
+            call set_hdf5(abs_path, -1._rk)
+          end if
+        end if
       end select
     end do
     close(iu)
@@ -138,5 +160,6 @@ contains
         if (rc/=0) stop "Failed to read EOS table"
       end if
     end do
+    call load_if_available()
   end subroutine load_deck
 end module input_parser

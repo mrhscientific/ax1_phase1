@@ -1,22 +1,83 @@
-# AX-1 (Modern Fortran) — Phase 1 Upgrades (Real‑world Track)
+# AX-1 (Modern Fortran) — Phase 2: Acceleration & Fidelity
 
-This release implements **Phase 1** toward real‑world usefulness:
+This release implements **Phase 2** upgrades for higher accuracy and robustness:
 
-- **α‑eigenvalue solver** via root‑finding on k(α): modify Σ_t′ = Σ_t + α/v, find α so that k_eff(α)=1.
-- **Delayed neutrons** (6 groups): precursor evolution and delayed source in transport.
-- **Controls**: W‑criterion proxy + **CFL** stability enforcement.
-- **EOS tables**: optional CSV tables (ρ, T) → (P, Cv) with bilinear interpolation.
-- **Tests/CI hooks**: smoke test and simple checks for α, CFL.
+- **S_n quadrature**: Support for S4, S6, and S8 angular discretization
+- **DSA acceleration**: Diffusion Synthetic Acceleration to speed up transport iterations
+- **Upscatter control**: Configurable upscatter treatment (allow/neglect/scale)
+- **HLLC-like hydro**: Replaced artificial viscosity with Riemann-solver-inspired interface pressure
+- **HDF5 XS stub**: Framework for temperature-dependent cross sections from NJOY/OpenMC
 
 ## Build & Run
+
 ```bash
 make
-./ax1 inputs/sample_phase1.deck
+./ax1 inputs/sample_phase2.deck
 ```
 
-For α‑eigen runs, set `eigmode alpha` in the deck (see samples). For EOS tables, supply `eos_table <path>`.
+For Phase 2 features, specify in the deck:
+- `Sn 8` (or 4, 6) for angular order
+- `use_dsa true` to enable DSA acceleration
+- `upscatter allow|neglect|scale` for scattering treatment
+
+## Phase 2 Enhancements
+
+### Transport
+- **S_n quadrature**: Flexible S4/S6/S8 angular discretization with Gauss-Legendre points
+- **DSA**: Tridiagonal diffusion correction to accelerate transport sweeps
+- **Upscatter control**: Neglect or scale upscatter in multi-group scattering
+
+### Hydrodynamics  
+- **Interface pressure**: HLLC-inspired PVRS (Primitive Variable Riemann Solver) approach for cell interfaces
+- **Slope limiting**: Minmod limiter for gradient-based reconstruction at interfaces (prevents oscillations)
+- **Removed artificial viscosity**: Replaced by pressure-based flux evaluation
+
+### Data
+- **HDF5 framework**: Stub reader for NJOY/OpenMC temperature-dependent cross sections
+- **Input deck**: New `[xslib]` section to specify HDF5 paths
+
+## Tests
+
+Run the comprehensive test suite:
+
+```bash
+make
+./tests/smoke_test.sh      # Phase 1 compatibility
+./tests/phase2_attn.sh      # Phase 2 attenuation test (S8, DSA)
+./tests/phase2_shocktube.sh # Phase 2 hydrodynamics test
+```
 
 ## Notes
-- The α solve uses **secant** on k(α)=1 with a diffusion‑synthetic‑like iteration tolerance.
-- Delayed source is included with χ_d = χ (configurable later); explicit Euler update per hydro substep.
-- CFL uses c ≈ sqrt(max(a,eps)) from EOS and shell velocity; W combines |ΔU| and |ΔP|/P changes.
+
+- The DSA correction applies a single Gauss-Seidel sweep on the scalar flux per energy group
+- HLLC interface pressure uses PVRS (Primitive Variable Riemann Solver) for pressure estimation at cell faces
+- Slope limiting uses the minmod function to compute limited gradients for second-order accurate interface reconstruction
+- Upscatter control allows suppression (`neglect`) or scaling (`scale`) of upward energy transfers
+- S_n quadrature uses Gauss-Legendre abscissae optimized for slab geometry
+
+## Benchmarks
+
+A comprehensive benchmark suite is available in `benchmarks/`:
+
+- **Godiva Criticality**: Fast reactor criticality problem
+- **SOD Shock Tube**: Riemann problem for hydrodynamics validation
+- **Upscatter Treatment**: Tests upscatter control feature
+- **DSA Convergence**: Demonstrates acceleration effectiveness
+
+Run all benchmarks:
+```bash
+./benchmarks/run_benchmarks.sh
+```
+
+See `benchmarks/README.md` for detailed descriptions and expected results.
+
+## Testing
+
+For comprehensive testing instructions, see `TESTING_PHASE2.md`.
+
+## Phase 1 Features (Retained)
+
+- **α‑eigenvalue solver** via root‑finding on k(α)
+- **Delayed neutrons** (6 groups)
+- **Controls**: W‑criterion + CFL stability
+- **EOS tables**: CSV tables with bilinear interpolation

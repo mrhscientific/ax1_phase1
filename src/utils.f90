@@ -24,4 +24,22 @@ contains
     real(rk) :: y
     y = min(max(x, lo), hi)
   end function
+
+  pure function minmod(a, b) result(y)
+    real(rk), intent(in) :: a, b
+    real(rk) :: y
+    if (a*b <= 0._rk) then
+      y = 0._rk
+    else if (abs(a) < abs(b)) then
+      y = a
+    else
+      y = b
+    end if
+  end function
+
+  pure function minmod3(a, b, c) result(y)
+    real(rk), intent(in) :: a, b, c
+    real(rk) :: y
+    y = minmod(minmod(a, b), c)
+  end function
 end module utils

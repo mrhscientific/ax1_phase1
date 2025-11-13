@@ -19,6 +19,7 @@ SRC := \
         src/eos_table.f90 \
         src/utils.f90 \
         src/thermo.f90 \
+        src/xs_lib.f90 \
         src/controls.f90 \
         src/hydro.f90 \
         src/neutronics_s4_alpha.f90 \

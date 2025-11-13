@@ -22,6 +22,10 @@ module types
      integer  :: hydro_per_neut=1, hydro_per_neut_max=200
      real(rk) :: w_limit=0.3_rk, alpha_delta_limit=0.2_rk, power_delta_limit=0.2_rk
      real(rk) :: cfl = 0.8_rk
+     integer  :: Sn_order = 4          ! 4, 6, 8 supported
+     logical  :: use_dsa = .false.
+     character(len=16) :: upscatter = "allow"  ! allow|neglect|scale
+     real(rk) :: upscatter_scale = 1.0_rk
   end type
   type :: XSecGroup
      real(rk) :: sig_t=0._rk
@@ -56,7 +60,11 @@ module types
      real(rk), allocatable :: q_delay(:,:)   ! (G,Nshell) delayed source
      real(rk), allocatable :: power_frac(:)  ! per shell
 
-     ! delayed precursors per shell and delayed group
-     real(rk), allocatable :: C(:,:,:) ! (DGRP, G, Nshell) lumped per energy group for now
+    ! delayed precursors per shell and delayed group
+    real(rk), allocatable :: C(:,:,:) ! (DGRP, G, Nshell) lumped per energy group for now
+    
+    ! performance counters
+    integer :: transport_iterations = 0
+    integer :: dsa_iterations = 0
   end type
 end module types

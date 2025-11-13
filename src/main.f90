@@ -25,7 +25,8 @@ program ax1
 
   call banner()
   call load_deck(deck, st, ctrl)
-  call set_S4_quadrature(st)
+  call set_Sn_quadrature(st, ctrl%Sn_order)
+  call neutronics_set_controls(ctrl)
   call ensure_neutronics_arrays(st)
   c_vp = 1.0_rk
   k = 1.0_rk
@@ -35,11 +36,11 @@ program ax1
     step = step + 1
 
     if (trim(ctrl%eigmode) == "alpha") then
-      call solve_alpha_by_root(st, alpha, k)
+      call solve_alpha_by_root(st, alpha, k, use_dsa=ctrl%use_dsa)
       st%alpha = alpha
       call finalize_power_and_alpha(st, k, include_delayed=.true.)
     else
-      call sweep_spherical_k(st, k, alpha=0._rk, tol=1.0e-5_rk, itmax=200)
+      call sweep_spherical_k(st, k, alpha=0._rk, tol=1.0e-5_rk, itmax=200, use_dsa=ctrl%use_dsa)
       call finalize_power_and_alpha(st, k, include_delayed=.false.)
       ! alpha via prompt Λ (optional): left out; alpha remains from previous or zero
     end if
@@ -67,5 +68,6 @@ program ax1
     power_prev = st%total_power
   end do
 
+  call print_perf_summary(st)
   print *, "Done."
 end program ax1
