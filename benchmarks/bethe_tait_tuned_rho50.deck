@@ -1,0 +1,93 @@
+# Bethe-Tait Benchmark - Tuned Configuration with Moderate Reactivity
+# Moderate reactivity insertion to 50 pcm
+
+[controls]
+eigmode alpha
+dt 1.0e-4
+hydro_per_neut 1
+cfl 0.5
+Sn 8
+use_dsa true
+upscatter allow
+# Phase 3: Moderate reactivity insertion
+rho_insert 50.0
+t_end 0.01
+output_freq 10
+output_file bethe_tait_tuned_rho50_output
+
+[geometry]
+Nshell 20
+G 3
+
+[materials]
+nmat 1
+
+[material]
+1
+
+# Phase 3: Enable temperature-dependent cross sections
+[material_properties]
+1 true 300.0 0.5
+
+# Simplified cross sections (tuned for criticality)
+[xs_group]
+1 1  0.8   0.12  0.6
+1 2  0.7   0.08  0.3
+1 3  0.6   0.04  0.1
+
+# Scattering
+[scatter]
+1 1 1  0.6
+1 1 2  0.1
+1 2 2  0.55
+1 2 3  0.1
+1 3 3  0.45
+
+# Delayed neutrons (6-group Keepin data for 235U)
+[delayed]
+1 1  0.000230  0.0127
+1 2  0.000832  0.0317
+1 3  0.000925  0.1150
+1 4  0.000279  0.3110
+1 5  0.000082  1.4000
+1 6  0.000075  3.8700
+
+# Phase 3: Reactivity feedback parameters
+[reactivity_feedback]
+enable_doppler true
+enable_expansion true
+enable_void false
+doppler_coef -1.0
+expansion_coef -0.5
+void_coef 0.0
+T_ref 300.0
+rho_ref 0.0
+
+# EOS: Ideal gas with gamma=1.4
+[eos]
+1  0 0 287  717 0
+10 0 0 287  717 0
+20 0 0 287 717 0
+
+[shells]
+1 0.5  1 10.0 300
+2 1.0  1 10.0 300
+3 1.5  1 10.0 300
+4 2.0  1 10.0 300
+5 2.5  1 10.0 300
+6 3.0  1 10.0 300
+7 3.5  1 10.0 300
+8 4.0  1 10.0 300
+9 4.5  1 10.0 300
+10 5.0 1 10.0 300
+11 5.5 1 10.0 300
+12 6.0 1 10.0 300
+13 6.5 1 10.0 300
+14 7.0 1 10.0 300
+15 7.5 1 10.0 300
+16 8.0 1 10.0 300
+17 8.5 1 10.0 300
+18 9.0 1 10.0 300
+19 9.5 1 10.0 300
+20 10.0 1 10.0 300
+

@@ -38,7 +38,15 @@ contains
 
       select case (trim(section))
       case ("[controls]")
-        read(line,*) key, sval
+        ! Parse key and value, handling paths correctly
+        kpos = index(line, ' ')
+        if (kpos > 0) then
+          key = trim(adjustl(line(1:kpos-1)))
+          sval = adjustl(line(kpos+1:))
+        else
+          read(line,*) key
+          sval = ""
+        end if
         select case (trim(key))
         case ("eigmode"); ctrl%eigmode = trim(sval)
         case ("dt"); read(sval,*) ctrl%dt
@@ -53,6 +61,31 @@ contains
           end if
         case ("upscatter"); ctrl%upscatter = trim(sval)
         case ("upscatter_scale"); read(sval,*) ctrl%upscatter_scale
+        ! Phase 3: Reactivity insertion
+        case ("rho_insert"); read(sval,*) ctrl%rho_insert
+        case ("rho_profile"); ctrl%rho_profile = trim(sval); ctrl%use_rho_profile = .true.
+        case ("t_end"); read(sval,*) ctrl%t_end
+        case ("output_freq"); read(sval,*) ctrl%output_freq
+        case ("output_file"); ctrl%output_file = trim(sval)
+        ! Phase 3: Restart/checkpoint
+        case ("checkpoint_file"); ctrl%checkpoint_file = trim(sval); ctrl%write_checkpoint = .true.
+        case ("restart_file"); ctrl%restart_file = trim(sval); ctrl%use_restart = .true.
+        case ("checkpoint_freq"); read(sval,*) ctrl%checkpoint_freq
+        ! Phase 3: UQ and sensitivity
+        case ("run_uq");
+          if (trim(adjustl(sval))=="1" .or. trim(adjustl(sval))=="true") then
+            ctrl%run_uq = .true.
+          else
+            ctrl%run_uq = .false.
+          end if
+        case ("run_sensitivity");
+          if (trim(adjustl(sval))=="1" .or. trim(adjustl(sval))=="true") then
+            ctrl%run_sensitivity = .true.
+          else
+            ctrl%run_sensitivity = .false.
+          end if
+        case ("uq_output_file"); ctrl%uq_output_file = trim(sval)
+        case ("sensitivity_output_file"); ctrl%sensitivity_output_file = trim(sval)
         end select
 
       case ("[geometry]")
@@ -70,6 +103,56 @@ contains
       case ("[material]")
         read(line,*) imat
         st%mat(imat)%num_groups = st%G
+
+      case ("[material_properties]")
+        ! Phase 3: Material properties (temperature-dependent, T_ref, doppler_exponent)
+        ! Format: imat temperature_dependent T_ref doppler_exponent
+        ! Parse manually to handle all values
+        kpos = index(line, ' ')
+        if (kpos > 0) then
+          ! Extract imat
+          read(line(1:kpos-1),*) imat
+          sval = adjustl(line(kpos+1:))
+          ! Extract temperature_dependent flag
+          kpos = index(sval, ' ')
+          if (kpos > 0) then
+            key = trim(adjustl(sval(1:kpos-1)))
+            p2 = adjustl(sval(kpos+1:))
+            if (trim(key)=="1" .or. trim(key)=="true" .or. trim(key)=="True" .or. trim(key)=="TRUE") then
+              st%mat(imat)%temperature_dependent = .true.
+            else
+              st%mat(imat)%temperature_dependent = .false.
+            end if
+            ! Extract T_ref and doppler_exponent
+            kpos = index(p2, ' ')
+            if (kpos > 0) then
+              sval = trim(adjustl(p2(1:kpos-1)))
+              p2 = adjustl(p2(kpos+1:))
+              read(sval,*) st%mat(imat)%T_ref
+              if (len_trim(p2) > 0) then
+                read(p2,*) st%mat(imat)%doppler_exponent
+              else
+                st%mat(imat)%doppler_exponent = 0.5_rk  ! Default
+              end if
+            else
+              ! Only T_ref provided
+              read(p2,*) st%mat(imat)%T_ref
+              st%mat(imat)%doppler_exponent = 0.5_rk  ! Default
+            end if
+          else
+            ! Only temperature_dependent flag provided
+            if (trim(adjustl(sval))=="1" .or. trim(adjustl(sval))=="true") then
+              st%mat(imat)%temperature_dependent = .true.
+            else
+              st%mat(imat)%temperature_dependent = .false.
+            end if
+            st%mat(imat)%T_ref = 300.0_rk  ! Default
+            st%mat(imat)%doppler_exponent = 0.5_rk  ! Default
+          end if
+        else
+          ! Invalid format
+          print *, "Warning: Invalid [material_properties] format: ", trim(line)
+        end if
 
       case ("[xs_group]")
         read(line,*) imat, g, st%mat(imat)%groups(g)%sig_t, st%mat(imat)%groups(g)%nu_sig_f, st%mat(imat)%groups(g)%chi
@@ -110,6 +193,35 @@ contains
           abs_path = trim(p2)
         end if
         st%eos(idx2)%table_path = trim(abs_path)
+
+      case ("[reactivity_feedback]")
+        ! Phase 3: Reactivity feedback parameters
+        read(line,*) key, sval
+        select case (trim(key))
+        case ("doppler_coef"); read(sval,*) st%feedback%doppler_coef
+        case ("expansion_coef"); read(sval,*) st%feedback%expansion_coef
+        case ("void_coef"); read(sval,*) st%feedback%void_coef
+        case ("enable_doppler");
+          if (trim(adjustl(sval))=="1" .or. trim(adjustl(sval))=="true") then
+            st%feedback%enable_doppler = .true.
+          else
+            st%feedback%enable_doppler = .false.
+          end if
+        case ("enable_expansion");
+          if (trim(adjustl(sval))=="1" .or. trim(adjustl(sval))=="true") then
+            st%feedback%enable_expansion = .true.
+          else
+            st%feedback%enable_expansion = .false.
+          end if
+        case ("enable_void");
+          if (trim(adjustl(sval))=="1" .or. trim(adjustl(sval))=="true") then
+            st%feedback%enable_void = .true.
+          else
+            st%feedback%enable_void = .false.
+          end if
+        case ("T_ref"); read(sval,*) st%feedback%T_ref
+        case ("rho_ref"); read(sval,*) st%feedback%rho_ref
+        end select
 
       case ("[shells]")
         if (.not. allocated(st%sh)) allocate(st%sh(st%Nshell))

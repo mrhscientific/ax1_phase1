@@ -1,0 +1,21 @@
+# Standardized Output Format for Code-to-Code Comparison
+#
+# This format should be used for all codes to enable easy comparison.
+#
+# Format: CSV with the following columns:
+#   time, keff, alpha, power, flux_g1, flux_g2, ..., reaction_rate_1, reaction_rate_2, ...
+#
+# Example:
+#   time,keff,alpha,power,flux_g1,flux_g2,fission_rate,capture_rate
+#   0.0,1.0,0.0,1.0,1.0,1.0,1.0,1.0
+#   0.1,1.01,0.01,1.01,1.01,1.01,1.01,1.01
+#
+# Notes:
+#   - All values should be in consistent units
+#   - Time in seconds
+#   - keff dimensionless
+#   - alpha in 1/s
+#   - power in W
+#   - flux in 1/(cm^2 s)
+#   - reaction rates in 1/s
+#

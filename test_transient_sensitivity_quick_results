@@ -1,0 +1,16 @@
+# Sensitivity Analysis Results
+# Mode: TRANSIENT
+# Number of time points:      3
+#
+# Sensitivity coefficients: dk/dX
+#
+# Sensitivity to cross sections (dk/dxs):
+# Group   1  -0.9126058E-01
+# Group   2   0.2943115E-01
+# Sensitivity to delayed neutron fractions (dk/dbeta):
+# Delayed group   1   0.0000000E+00
+# Delayed group   2   0.0000000E+00
+# Delayed group   3   0.0000000E+00
+# Delayed group   4   0.0000000E+00
+# Delayed group   5   0.0000000E+00
+# Delayed group   6   0.0000000E+00

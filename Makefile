@@ -21,10 +21,17 @@ SRC := \
         src/thermo.f90 \
         src/xs_lib.f90 \
         src/controls.f90 \
+        src/temperature_xs.f90 \
         src/hydro.f90 \
         src/neutronics_s4_alpha.f90 \
-        src/input_parser.f90 \
+        src/reactivity_feedback.f90 \
+        src/history_mod.f90 \
+        src/checkpoint_mod.f90 \
         src/io_mod.f90 \
+        src/input_parser.f90 \
+        src/simulation_mod.f90 \
+        src/uq_mod.f90 \
+        src/sensitivity_mod.f90 \
         src/main.f90
 OBJ := $(SRC:.f90=.o)
 

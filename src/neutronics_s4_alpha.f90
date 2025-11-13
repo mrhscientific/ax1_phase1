@@ -2,6 +2,7 @@ module neutronics_s4_alpha
   use kinds
   use types
   use utils, only: clamp
+  use temperature_xs
   implicit none
   character(len=16) :: p2_upscatter_mode = "allow"
   real(rk) :: p2_upscatter_scale = 1.0_rk
@@ -80,11 +81,17 @@ contains
 
       do g=1, st%G
         do gp=1, st%G
-          st%q_scatter(g,i) = st%q_scatter(g,i) + scattering_coeff(imat, gp, g, st) * st%phi(gp,i)
+          ! Use temperature-corrected scattering
+          st%q_scatter(g,i) = st%q_scatter(g,i) + scattering_coeff(imat, gp, g, st, shell_idx=i) * st%phi(gp,i)
         end do
         sumf = 0._rk
         do gp=1, st%G
-          sumf = sumf + st%mat(imat)%groups(gp)%nu_sig_f * st%phi(gp,i)
+          ! Use temperature-corrected nu_sig_f
+          if (st%mat(imat)%temperature_dependent .and. st%mat(imat)%reference_stored) then
+            sumf = sumf + get_temperature_corrected_nu_sig_f(st, i, gp) * st%phi(gp,i)
+          else
+            sumf = sumf + st%mat(imat)%groups(gp)%nu_sig_f * st%phi(gp,i)
+          end if
         end do
         st%q_fiss(g,i) = prompt_scale * st%mat(imat)%groups(g)%chi * sumf / max(k, 1.0e-30_rk)
         ! delayed source: χ_d ≈ χ * sum_j λ_j C_j,g
@@ -95,11 +102,25 @@ contains
     end do
   end subroutine
 
-  pure function scattering_coeff(imat, gp, g, st) result(sig)
+  function scattering_coeff(imat, gp, g, st, shell_idx) result(sig)
+    ! Get scattering coefficient with temperature correction
     integer, intent(in) :: imat, gp, g
     type(State), intent(in) :: st
+    integer, intent(in), optional :: shell_idx
     real(rk) :: sig
-    sig = st%mat(imat)%sig_s(gp,g)
+    
+    ! Use temperature-corrected scattering if shell_idx is provided and material is temperature-dependent
+    if (present(shell_idx) .and. shell_idx > 0 .and. shell_idx <= st%Nshell) then
+      if (st%mat(imat)%temperature_dependent .and. st%mat(imat)%reference_stored) then
+        sig = get_temperature_corrected_sig_s(st, shell_idx, gp, g)
+      else
+        sig = st%mat(imat)%sig_s(gp, g)
+      end if
+    else
+      sig = st%mat(imat)%sig_s(gp, g)
+    end if
+    
+    ! Apply upscatter control
     if (trim(p2_upscatter_mode) == "neglect") then
       if (g < gp) sig = 0._rk
     else if (trim(p2_upscatter_mode) == "scale") then
@@ -136,7 +157,12 @@ contains
           psi_in = 0._rk
           do i=1, st%Nshell
             imat = st%mat_of_shell(i)
-            sig_t = st%mat(imat)%groups(g)%sig_t + alpha/max(st%vbar,1.0e-30_rk)
+            ! Use temperature-corrected sig_t
+            if (st%mat(imat)%temperature_dependent .and. st%mat(imat)%reference_stored) then
+              sig_t = get_temperature_corrected_sig_t(st, i, g) + alpha/max(st%vbar,1.0e-30_rk)
+            else
+              sig_t = st%mat(imat)%groups(g)%sig_t + alpha/max(st%vbar,1.0e-30_rk)
+            end if
             sig_t = max(sig_t, 1.0e-8_rk)
             rin = st%sh(i)%r_in; rout = st%sh(i)%r_out
             dx = max(rout - rin, 1.0e-12_rk)
@@ -152,7 +178,12 @@ contains
           psi_in = 0._rk
           do i=st%Nshell,1,-1
             imat = st%mat_of_shell(i)
-            sig_t = st%mat(imat)%groups(g)%sig_t + alpha/max(st%vbar,1.0e-30_rk)
+            ! Use temperature-corrected sig_t
+            if (st%mat(imat)%temperature_dependent .and. st%mat(imat)%reference_stored) then
+              sig_t = get_temperature_corrected_sig_t(st, i, g) + alpha/max(st%vbar,1.0e-30_rk)
+            else
+              sig_t = st%mat(imat)%groups(g)%sig_t + alpha/max(st%vbar,1.0e-30_rk)
+            end if
             sig_t = max(sig_t, 1.0e-8_rk)
             rin = st%sh(i)%r_in; rout = st%sh(i)%r_out
             dx = max(rout - rin, 1.0e-12_rk)
@@ -173,9 +204,15 @@ contains
 
       ! production ratio update
       do i=1, st%Nshell
+        imat = st%mat_of_shell(i)
         do g=1, st%G
           w_i = (st%sh(i)%r_out - st%sh(i)%r_in)
-          prod_new = prod_new + st%mat(st%mat_of_shell(i))%groups(g)%nu_sig_f * st%phi(g,i) * w_i
+          ! Use temperature-corrected nu_sig_f
+          if (st%mat(imat)%temperature_dependent .and. st%mat(imat)%reference_stored) then
+            prod_new = prod_new + get_temperature_corrected_nu_sig_f(st, i, g) * st%phi(g,i) * w_i
+          else
+            prod_new = prod_new + st%mat(imat)%groups(g)%nu_sig_f * st%phi(g,i) * w_i
+          end if
         end do
       end do
       if (abs(prod_new-1._rk) < tol) exit
@@ -192,12 +229,19 @@ contains
     type(State), intent(inout) :: st
     ! Minimal tridiagonal diffusion correction on scalar flux per group, per shell
     ! D ~ 1/(3*Σ_t), solve -∇·(D∇φ) + Σ_a φ = Q for a single pseudo-iteration; here we do one GS sweep
-    integer :: g, i
+    integer :: g, i, imat
     real(rk) :: sig_t, sig_a, Dl, Dr, Ai, Bi, Ci, Qi, denom, phi_new
     do g=1, st%G
       do i=1, st%Nshell
-        sig_t = max(st%mat(st%mat_of_shell(i))%groups(g)%sig_t, 1.0e-8_rk)
-        sig_a = max(sig_t - st%mat(st%mat_of_shell(i))%sig_s(g,g), 0._rk)
+        imat = st%mat_of_shell(i)
+        ! Use temperature-corrected sig_t
+        if (st%mat(imat)%temperature_dependent .and. st%mat(imat)%reference_stored) then
+          sig_t = max(get_temperature_corrected_sig_t(st, i, g), 1.0e-8_rk)
+          sig_a = max(sig_t - get_temperature_corrected_sig_s(st, i, g, g), 0._rk)
+        else
+          sig_t = max(st%mat(imat)%groups(g)%sig_t, 1.0e-8_rk)
+          sig_a = max(sig_t - st%mat(imat)%sig_s(g,g), 0._rk)
+        end if
         Dl = 1.0_rk/(3._rk*sig_t)
         Dr = Dl
         Ai = Dl
@@ -255,7 +299,12 @@ contains
       delayed_shell = 0._rk
       imat = st%mat_of_shell(i)
       do g=1, st%G
-        total_fission = total_fission + st%mat(imat)%groups(g)%nu_sig_f * st%phi(g,i) * vol_i
+        ! Use temperature-corrected nu_sig_f
+        if (st%mat(imat)%temperature_dependent .and. st%mat(imat)%reference_stored) then
+          total_fission = total_fission + get_temperature_corrected_nu_sig_f(st, i, g) * st%phi(g,i) * vol_i
+        else
+          total_fission = total_fission + st%mat(imat)%groups(g)%nu_sig_f * st%phi(g,i) * vol_i
+        end if
         delayed_shell = delayed_shell + st%q_delay(g,i) * vol_i
       end do
       delayed_shell = min(max(delayed_shell, 0._rk), total_fission)

@@ -1,0 +1,9 @@
+# Transient UQ Results
+# Number of samples:      3
+# Number of time points:      3
+#
+# Time-dependent statistics:
+# time, power_mean, power_std, alpha_mean, alpha_std, keff_mean, keff_std
+   0.5000000E-03   0.9413345E-01   0.3479282E-02  -0.3359301E+03   0.2734693E+02   0.9413345E-01   0.3479282E-02
+   0.1000000E-02   0.6720988E-01   0.9869783E-02  -0.8460256E+03   0.2659254E+03   0.6720988E-01   0.9869783E-02
+   0.1000000E-02   0.6720988E-01   0.9869783E-02  -0.8460256E+03   0.2659254E+03   0.6720988E-01   0.9869783E-02
