@@ -11,6 +11,7 @@ cfl 0.5
 Sn 4
 use_dsa false
 upscatter allow
+skip_neutronics true
 
 [geometry]
 Nshell 100

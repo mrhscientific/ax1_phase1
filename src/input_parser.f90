@@ -84,6 +84,12 @@ contains
           else
             ctrl%run_sensitivity = .false.
           end if
+        case ("skip_neutronics");
+          if (trim(adjustl(sval))=="1" .or. trim(adjustl(sval))=="true") then
+            ctrl%skip_neutronics = .true.
+          else
+            ctrl%skip_neutronics = .false.
+          end if
         case ("uq_output_file"); ctrl%uq_output_file = trim(sval)
         case ("sensitivity_output_file"); ctrl%sensitivity_output_file = trim(sval)
         end select

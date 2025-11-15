@@ -11,6 +11,7 @@ cfl 0.7
 Sn 8
 use_dsa true
 upscatter allow
+t_end 5.0e-5
 
 [geometry]
 Nshell 50

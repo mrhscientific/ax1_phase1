@@ -3,6 +3,7 @@ module neutronics_s4_alpha
   use types
   use utils, only: clamp
   use temperature_xs
+  use, intrinsic :: ieee_arithmetic
   implicit none
   character(len=16) :: p2_upscatter_mode = "allow"
   real(rk) :: p2_upscatter_scale = 1.0_rk
@@ -84,6 +85,13 @@ contains
           ! Use temperature-corrected scattering
           st%q_scatter(g,i) = st%q_scatter(g,i) + scattering_coeff(imat, gp, g, st, shell_idx=i) * st%phi(gp,i)
         end do
+        if (.not. ieee_is_finite(st%q_scatter(g,i))) then
+          print *, "Non-finite q_scatter at shell", i, " group", g, " sweep", st%transport_iterations
+          do gp=1, st%G
+            print *, "  contrib gp=", gp, " sig_s=", scattering_coeff(imat, gp, g, st, shell_idx=i), " phi=", st%phi(gp,i)
+          end do
+          stop "q_scatter NaN"
+        end if
         sumf = 0._rk
         do gp=1, st%G
           ! Use temperature-corrected nu_sig_f
@@ -94,6 +102,11 @@ contains
           end if
         end do
         st%q_fiss(g,i) = prompt_scale * st%mat(imat)%groups(g)%chi * sumf / max(k, 1.0e-30_rk)
+        if (.not. ieee_is_finite(st%q_fiss(g,i))) then
+          print *, "Non-finite q_fiss at shell", i, " group", g
+          print *, "  prompt_scale=", prompt_scale, " sumf=", sumf, " k=", k
+          stop "q_fiss NaN"
+        end if
         ! delayed source: χ_d ≈ χ * sum_j λ_j C_j,g
         do j=1, DGRP
           st%q_delay(g,i) = st%q_delay(g,i) + st%mat(imat)%groups(g)%chi * st%mat(imat)%lambda(j) * st%C(j,g,i)
@@ -139,7 +152,7 @@ contains
     logical,     intent(in), optional :: use_dsa
     integer :: it, i, g, m, imat
     real(rk) :: mu, wmu, rin, rout, dx, sig_t, tau, Sg, psi_in, psi_out
-    real(rk) :: prod_old, prod_new, w_i
+    real(rk) :: prod_old, prod_new, w_i, phi_norm
     logical :: do_dsa
 
     prod_old = 1.0_rk
@@ -169,6 +182,13 @@ contains
             Sg = 0.5_rk*( st%q_scatter(g,i) + st%q_fiss(g,i) )  ! no delayed in k
             tau = sig_t*dx / max(mu, 1.0e-12_rk)
             psi_out = ((1._rk - 0.5_rk*tau) * psi_in + dx*Sg) / (1._rk + 0.5_rk*tau + dx*0.5_rk/max(0.5_rk*(rin+rout),1.0e-6_rk))
+            if (.not. ieee_is_finite(psi_out)) then
+              print *, "NaN psi_out (outward)"
+              print *, "  m=",m," g=",g," i=",i
+              print *, "  mu=",mu," sig_t=",sig_t," dx=",dx," tau=",tau
+              print *, "  Sg=",Sg," psi_in=",psi_in," rin=",rin," rout=",rout
+              stop "psi_out NaN"
+            end if
             st%phi(g,i) = st%phi(g,i) + wmu*0.5_rk*(psi_in+psi_out)
             psi_in = psi_out
           end do
@@ -190,6 +210,13 @@ contains
             Sg = 0.5_rk*( st%q_scatter(g,i) + st%q_fiss(g,i) )
             tau = sig_t*dx / max(mu, 1.0e-12_rk)
             psi_out = ((1._rk - 0.5_rk*tau) * psi_in + dx*Sg) / (1._rk + 0.5_rk*tau + dx*0.5_rk/max(0.5_rk*(rin+rout),1.0e-6_rk))
+            if (.not. ieee_is_finite(psi_out)) then
+              print *, "NaN psi_out (inward)"
+              print *, "  m=",m," g=",g," i=",i
+              print *, "  mu=",mu," sig_t=",sig_t," dx=",dx," tau=",tau
+              print *, "  Sg=",Sg," psi_in=",psi_in," rin=",rin," rout=",rout
+              stop "psi_out NaN"
+            end if
             st%phi(g,i) = st%phi(g,i) + wmu*0.5_rk*(psi_in+psi_out)
             psi_in = psi_out
           end do
@@ -200,6 +227,11 @@ contains
       if (do_dsa) then
         st%dsa_iterations = st%dsa_iterations + 1
         call dsa_correction(st)
+      end if
+
+      phi_norm = maxval(abs(st%phi))
+      if (phi_norm > 1.0e50_rk) then
+        st%phi = st%phi / phi_norm
       end if
 
       ! production ratio update
@@ -215,6 +247,11 @@ contains
           end if
         end do
       end do
+      if (.not. ieee_is_finite(prod_new)) then
+        print *, "NaN prod_new after sweep"
+        print *, "  iteration=",it
+        stop "prod_new NaN"
+      end if
       if (abs(prod_new-1._rk) < tol) exit
       if (prod_old > 0._rk) then
         k = k * (prod_new / prod_old)

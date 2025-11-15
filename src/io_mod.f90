@@ -10,7 +10,7 @@ contains
     type(State),   intent(in) :: st
     type(Control), intent(in) :: ctrl
     character(len=*), intent(in) :: tag
-    write(*,'(a,f9.5,2x,a,f10.6,2x,a,f9.5,2x,a,i3,2x,a)') &
+    write(*,'(a,f9.5,2x,a,es12.5,2x,a,es12.5,2x,a,i3,2x,a)') &
       "t=", st%time, "alpha=", st%alpha, "keff=", st%k_eff, "H/neu=", ctrl%hydro_per_neut, trim(tag)
   end subroutine
   subroutine print_perf_summary(st)

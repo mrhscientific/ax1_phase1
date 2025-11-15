@@ -83,20 +83,34 @@ program ax1
       call calculate_reactivity_feedback(st, ctrl)
     end if
 
-    if (trim(ctrl%eigmode) == "alpha") then
-      call solve_alpha_by_root(st, alpha, k, use_dsa=ctrl%use_dsa)
-      st%alpha = alpha
-      call finalize_power_and_alpha(st, k, include_delayed=.true.)
+    if (.not. ctrl%skip_neutronics) then
+      if (trim(ctrl%eigmode) == "alpha") then
+        call solve_alpha_by_root(st, alpha, k, use_dsa=ctrl%use_dsa)
+        st%alpha = alpha
+        call finalize_power_and_alpha(st, k, include_delayed=.true.)
+      else
+        call sweep_spherical_k(st, k, alpha=0._rk, tol=1.0e-5_rk, itmax=200, use_dsa=ctrl%use_dsa)
+        call finalize_power_and_alpha(st, k, include_delayed=.false.)
+        ! alpha via prompt Λ (optional): left out; alpha remains from previous or zero
+      end if
+
+      ! Phase 3: Update reactivity from k_eff
+      call update_reactivity_from_k(st)
     else
-      call sweep_spherical_k(st, k, alpha=0._rk, tol=1.0e-5_rk, itmax=200, use_dsa=ctrl%use_dsa)
-      call finalize_power_and_alpha(st, k, include_delayed=.false.)
-      ! alpha via prompt Λ (optional): left out; alpha remains from previous or zero
+      ! Neutronics skipped (hydro-only run); maintain neutral defaults
+      if (.not. allocated(st%power_frac)) allocate(st%power_frac(st%Nshell))
+      st%power_frac = 1._rk/real(max(1, st%Nshell), rk)
+      st%total_power = 0._rk
+      st%alpha = 0._rk
+      st%k_eff = 1._rk
+      st%reactivity = ctrl%rho_insert
     end if
 
-    ! Phase 3: Update reactivity from k_eff
-    call update_reactivity_from_k(st)
-
-    call step_line(st, ctrl, "[neutronics]")
+    if (ctrl%skip_neutronics) then
+      call step_line(st, ctrl, "[neutronics skipped]")
+    else
+      call step_line(st, ctrl, "[neutronics]")
+    end if
 
     ! THERMO + HYDRO for Ns4 sub-steps
     nh = ctrl%hydro_per_neut

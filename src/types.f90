@@ -56,6 +56,7 @@ module types
      logical  :: run_sensitivity = .false.   ! Run sensitivity analysis
      character(len=256) :: uq_output_file = "" ! UQ output file
      character(len=256) :: sensitivity_output_file = "" ! Sensitivity output file
+     logical  :: skip_neutronics = .false.   ! Skip neutronics solve (hydro-only runs)
   end type
   type :: XSecGroup
      real(rk) :: sig_t=0._rk
