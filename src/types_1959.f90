@@ -136,6 +136,7 @@ module types_1959
      character(len=256) :: output_file = "ax1_1959.out"
      logical :: print_input = .true.  ! Print input echo
      logical :: verbose = .false.     ! Verbose output for debugging
+     logical :: skip_neutronics = .false.  ! Skip neutronics (hydro-only test)
   end type Control_1959
 
   ! ===========================================================================

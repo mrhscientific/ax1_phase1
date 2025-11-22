@@ -28,6 +28,7 @@ module time_control_1959
   private
   public :: compute_w_stability, adjust_timestep_1959
   public :: check_vj_ok1_test, compute_ns4_hydro
+  public :: check_termination, init_time_control
 
 contains
 

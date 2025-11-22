@@ -1,0 +1,47 @@
+# Makefile for 1959 AX-1 Code
+# Faithful reproduction of ANL-5977
+
+FC = gfortran
+FFLAGS = -O2 -fcheck=bounds -Wall -Wextra -pedantic -g
+LDFLAGS =
+
+# Source files (order matters for dependencies)
+SOURCES = src/kinds.f90 \
+          src/types_1959.f90 \
+          src/neutronics_s4_1959.f90 \
+          src/hydro_vnr_1959.f90 \
+          src/time_control_1959.f90 \
+          src/io_1959.f90 \
+          src/main_1959.f90
+
+# Object files
+OBJECTS = $(SOURCES:.f90=.o)
+
+# Executable
+EXEC = ax1_1959
+
+# Default target
+all: $(EXEC)
+
+# Link executable
+$(EXEC): $(OBJECTS)
+	$(FC) $(LDFLAGS) -o $@ $^
+	@echo "✅ Built 1959 AX-1 executable: $(EXEC)"
+
+# Compile Fortran sources
+%.o: %.f90
+	$(FC) $(FFLAGS) -c $< -o $@
+
+# Clean
+clean:
+	rm -f src/*.o src/*.mod *.o *.mod $(EXEC)
+	@echo "Cleaned build artifacts"
+
+# Phony targets
+.PHONY: all clean test
+
+# Test target (placeholder)
+test: $(EXEC)
+	@echo "Running basic test..."
+	./$(EXEC) inputs/test_1zone.inp || echo "Test input not yet created"
+

@@ -30,6 +30,7 @@ module hydro_vnr_1959
   private
   public :: hydro_step_1959, compute_lagrangian_coords
   public :: update_thermo_1959, compute_viscous_pressure
+  public :: compute_total_energy, add_fission_energy
 
 contains
 
