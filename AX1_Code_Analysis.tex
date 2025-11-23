@@ -10,6 +10,10 @@
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage{fancyhdr}
+\usepackage{pifont} % For checkmarks and symbols
+\newcommand{\cmark}{\ding{51}} % Checkmark
+\newcommand{\xmark}{\ding{55}} % X mark
+\newcommand{\wmark}{\textbf{!}} % Warning mark
 
 % Code listing style
 \lstset{
@@ -749,12 +753,12 @@ The following components correctly match the 1959 design:
 \toprule
 \textbf{Component} & \textbf{1959} & \textbf{Modern} \\
 \midrule
-Linear EOS & $P_H = \alpha\rho + \beta\theta + \tau$ & ✓ Match \\
-Specific heat & $C_v = A_{cv} + B_{cv}\theta$ & ✓ Match \\
-$\alpha$-eigenvalue & $\alpha = K_{ex}/\ell$ & ✓ Match \\
-S4 quadrature & 5 angles & ✓ Match (when S4 selected) \\
-Spherical geometry & Lagrangian shells & ✓ Match \\
-Lagrangian coordinates & Embedded mesh & ✓ Match \\
+Linear EOS & $P_H = \alpha\rho + \beta\theta + \tau$ & \cmark{} Match \\
+Specific heat & $C_v = A_{cv} + B_{cv}\theta$ & \cmark{} Match \\
+$\alpha$-eigenvalue & $\alpha = K_{ex}/\ell$ & \cmark{} Match \\
+S4 quadrature & 5 angles & \cmark{} Match (when S4 selected) \\
+Spherical geometry & Lagrangian shells & \cmark{} Match \\
+Lagrangian coordinates & Embedded mesh & \cmark{} Match \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1178,12 +1182,12 @@ The modern AX-1 code is a sophisticated \textbf{deterministic} coupled neutronic
 
 The fundamental computational methods match the 1959 ANL-5977 design:
 \begin{itemize}
-    \item ✓ $\alpha$-eigenvalue calculation: $\alpha = K_{ex}/\ell$
-    \item ✓ Linear equation of state: $P_H = \alpha\rho + \beta\theta + \tau$
-    \item ✓ Specific heat relation: $C_v = A_{cv} + B_{cv}\theta$
-    \item ✓ S4 discrete ordinates (when selected)
-    \item ✓ Spherical Lagrangian geometry
-    \item ✓ Shell-based spatial discretization
+    \item \cmark{} $\alpha$-eigenvalue calculation: $\alpha = K_{ex}/\ell$
+    \item \cmark{} Linear equation of state: $P_H = \alpha\rho + \beta\theta + \tau$
+    \item \cmark{} Specific heat relation: $C_v = A_{cv} + B_{cv}\theta$
+    \item \cmark{} S4 discrete ordinates (when selected)
+    \item \cmark{} Spherical Lagrangian geometry
+    \item \cmark{} Shell-based spatial discretization
 \end{itemize}
 
 \textbf{Critical Algorithmic Changes: IDENTIFIED}
@@ -1200,10 +1204,10 @@ These are \textbf{intentional enhancements} that improve physical accuracy but f
 \textbf{Verification Status: PARTIAL}
 
 \begin{itemize}
-    \item ✓ Core equations verified against 1959 report
-    \item ✓ S\_n constants appear correct
-    \item ⚠ Unit system requires verification ($\mu$sec, keV, megabars)
-    \item ⚠ Cannot reproduce exact 1959 results due to algorithm changes
+    \item \cmark{} Core equations verified against 1959 report
+    \item \cmark{} S\_n constants appear correct
+    \item \wmark{} Unit system requires verification ($\mu$sec, keV, megabars)
+    \item \wmark{} Cannot reproduce exact 1959 results due to algorithm changes
 \end{itemize}
 
 \subsection{Recommendations for Validation}
@@ -1283,48 +1287,48 @@ The modern implementation demonstrates:
 
 \begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
 src/
-├── kinds.f90              - Precision definitions
-├── constants.f90          - Physical constants
-├── types.f90              - Data structures
-├── utils.f90              - Utility functions
-├── input_parser.f90       - Input deck parser
-├── io_mod.f90             - I/O routines
-├── neutronics_s4_alpha.f90 - Transport solver
-├── hydro.f90              - Hydrodynamics
-├── thermo.f90             - Thermodynamics/EOS
-├── eos_table.f90          - Tabular EOS
-├── controls.f90           - Time step control
-├── reactivity_feedback.f90 - Feedback mechanisms
-├── temperature_xs.f90     - Temperature-dependent XS
-├── history_mod.f90        - Time history output
-├── checkpoint_mod.f90     - Checkpoint/restart
-├── uq_mod.f90             - Uncertainty quantification
-├── sensitivity_mod.f90    - Sensitivity analysis
-├── simulation_mod.f90     - High-level control
-├── xs_lib.f90             - Cross section library
-└── main.f90               - Main program
+  |-- kinds.f90              - Precision definitions
+  |-- constants.f90          - Physical constants
+  |-- types.f90              - Data structures
+  |-- utils.f90              - Utility functions
+  |-- input_parser.f90       - Input deck parser
+  |-- io_mod.f90             - I/O routines
+  |-- neutronics_s4_alpha.f90 - Transport solver
+  |-- hydro.f90              - Hydrodynamics
+  |-- thermo.f90             - Thermodynamics/EOS
+  |-- eos_table.f90          - Tabular EOS
+  |-- controls.f90           - Time step control
+  |-- reactivity_feedback.f90 - Feedback mechanisms
+  |-- temperature_xs.f90     - Temperature-dependent XS
+  |-- history_mod.f90        - Time history output
+  |-- checkpoint_mod.f90     - Checkpoint/restart
+  |-- uq_mod.f90             - Uncertainty quantification
+  |-- sensitivity_mod.f90    - Sensitivity analysis
+  |-- simulation_mod.f90     - High-level control
+  |-- xs_lib.f90             - Cross section library
+  `-- main.f90               - Main program
 \end{lstlisting}
 
 \subsection{Test and Validation Structure}
 
 \begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
 tests/
-├── smoke_test.sh          - Basic functionality
-├── phase2_attn.sh         - Transport test
-├── phase2_shocktube.sh    - Hydrodynamics test
-├── test_phase3.sh         - Phase 3 features
-└── test_uq_sensitivity.sh - UQ/sensitivity tests
+  |-- smoke_test.sh          - Basic functionality
+  |-- phase2_attn.sh         - Transport test
+  |-- phase2_shocktube.sh    - Hydrodynamics test
+  |-- test_phase3.sh         - Phase 3 features
+  `-- test_uq_sensitivity.sh - UQ/sensitivity tests
 
 benchmarks/
-├── godiva_criticality.deck     - Fast reactor k-eff
-├── sod_shock_tube.deck         - Riemann problem
-├── bethe_tait_transient.deck   - Transient benchmark
-├── upscatter_treatment.deck    - Upscatter test
-└── dsa_convergence.deck        - DSA effectiveness
+  |-- godiva_criticality.deck     - Fast reactor k-eff
+  |-- sod_shock_tube.deck         - Riemann problem
+  |-- bethe_tait_transient.deck   - Transient benchmark
+  |-- upscatter_treatment.deck    - Upscatter test
+  `-- dsa_convergence.deck        - DSA effectiveness
 
 validation/
-├── validate_bethe_tait.sh      - Bethe-Tait validation
-└── code_to_code_comparison.sh  - Compare to MCNP/Serpent
+  |-- validate_bethe_tait.sh      - Bethe-Tait validation
+  `-- code_to_code_comparison.sh  - Compare to MCNP/Serpent
 \end{lstlisting}
 
 \section{Key Equations Summary}
