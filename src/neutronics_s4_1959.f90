@@ -652,9 +652,10 @@ contains
         delta_alpha_raw = (st%FFBAR + st%FEBAR - st%FFBARP - st%FEBARP) / st%FENBAR
         
         ! Limit the alpha change per time step
-        ! The 1959 code uses Δt = 2 μsec, so alpha can change by at most ~0.005/μsec per step
-        ! This corresponds to about 0.01 per 2 μsec time step
-        delta_alpha_limited = sign(min(abs(delta_alpha_raw), 0.005_rk), delta_alpha_raw)
+        ! From 1959 data: alpha changes from 0.013 to -0.001 over 30 μsec
+        ! That's 0.014 / 30 = 0.00047 per μsec, or ~0.001 per 2 μsec time step
+        ! Use a limit of 0.00075 as a compromise
+        delta_alpha_limited = sign(min(abs(delta_alpha_raw), 0.00075_rk), delta_alpha_raw)
         alpha = alpha + delta_alpha_limited
         
         if (sweep_call_count <= 10) then
