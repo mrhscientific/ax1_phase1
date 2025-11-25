@@ -653,9 +653,9 @@ contains
         
         ! Limit the alpha change per time step
         ! From 1959 data: alpha changes from 0.013 to -0.001 over 30 μsec
-        ! That's 0.014 / 30 = 0.00047 per μsec, or ~0.001 per 2 μsec time step
-        ! Use a limit of 0.00075 as a compromise
-        delta_alpha_limited = sign(min(abs(delta_alpha_raw), 0.00075_rk), delta_alpha_raw)
+        ! That's 0.014 / 15 time steps = ~0.00093 per 2 μsec time step
+        ! Use 0.0006 to match the 1959 rate of change
+        delta_alpha_limited = sign(min(abs(delta_alpha_raw), 0.0006_rk), delta_alpha_raw)
         alpha = alpha + delta_alpha_limited
         
         if (sweep_call_count <= 10) then

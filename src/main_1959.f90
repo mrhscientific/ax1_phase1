@@ -118,6 +118,10 @@ program ax1_1959
   ! ============================================================================
   ! ICNTRL=01: Critical Geometry Search (ANL-5977 Sheet No. 2)
   ! ============================================================================
+  ! Set generation time BEFORE geometry fitting (Geneva 10 value)
+  state%LAMBDA_INITIAL = 0.248_rk  ! μsec (from Geneva 10 sample problem)
+  print *, "Generation time Λ =", state%LAMBDA_INITIAL, " μsec"
+  
   if (control%ICNTRL == 1) then
     print *, "========================================="
     print *, "ICNTRL=01 MODE: Fitting geometry to target alpha"
@@ -125,6 +129,10 @@ program ax1_1959
     call fit_geometry_to_alpha_1959(state, control)
     ! After geometry fit, recompute Lagrangian coordinates
     call compute_lagrangian_coords(state)
+    ! ANL-5977 line 433: ICNTRL=0 after geometry fit
+    ! This switches to alpha update mode for the transient
+    control%ICNTRL = 0
+    print *, "ICNTRL set to 0 for transient phase"
   end if
   
   ! ============================================================================
