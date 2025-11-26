@@ -1,6 +1,0 @@
-# Time history output
-# Columns: time, power, alpha, keff, reactivity
-# time (s), power (W), alpha (1/s), keff, reactivity (pcm)
-  0.5000000E-03   0.8762091E-01  -0.3967824E+03   0.8762091E-01  -0.1041280E+07
-  0.1000000E-02   0.9341444E-01  -0.3394932E+03   0.9341444E-01  -0.9704983E+06
-  0.1000000E-02   0.9341444E-01  -0.3394932E+03   0.9341444E-01  -0.9704983E+06

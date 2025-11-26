@@ -1,4 +1,37 @@
+# Build artifacts
+*.mod
+*.o
+*.a
+ax1
+ax1_1959
+build/
 
-# Large output files
-run_fixed5.txt
-run_nolimit.txt
+# LaTeX auxiliary files
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+
+# Output files
+*.csv
+run_*.txt
+*_output.txt
+
+# Editor/IDE
+.vscode/
+*.swp
+*~
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
