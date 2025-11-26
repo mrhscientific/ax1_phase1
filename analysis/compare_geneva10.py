@@ -9,179 +9,66 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from pathlib import Path
 
-# Set up matplotlib style
-plt.style.use('seaborn-v0_8-whitegrid')
-plt.rcParams['figure.figsize'] = (12, 8)
-plt.rcParams['font.size'] = 12
-plt.rcParams['axes.labelsize'] = 14
-plt.rcParams['axes.titlesize'] = 16
+# Set up matplotlib for LaTeX-style fonts
+plt.rcParams.update({
+    'text.usetex': False,  # Use mathtext instead of full LaTeX
+    'font.family': 'serif',
+    'font.serif': ['Times New Roman', 'Times', 'DejaVu Serif'],
+    'mathtext.fontset': 'cm',  # Computer Modern (LaTeX-like)
+    'axes.labelsize': 11,
+    'axes.titlesize': 12,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
+    'legend.fontsize': 9,
+    'figure.titlesize': 13,
+})
 
 # =============================================================================
 # Reference data from ANL-5977 (1959) Geneva 10 problem
-# CORRECTED extraction from the paper's output tables
-# Units: TIME (μsec), QP (10^12 ergs), POWER (relative), ALPHA (μsec^-1), W (dimensionless)
 # =============================================================================
 
-# Data from the 1959 paper - carefully extracted from the LaTeX tables
-# Note: The paper shows output at various time points
-
-# ACTUAL DATA FROM ANL-5977 (1959) - extracted directly from paper tables
-# Only using data points that appear in the original printout
 ref_1959_time = np.array([
-    0.0,      # Initial
-    132.0,    # t=1.32E02 (from table)
-    210.0,    # t=2.10E02
-    240.0,    # t=2.40E02
-    262.0,    # t=2.62E02
-    270.0,    # t=2.70E02
-    274.0,    # t=2.74E02
-    280.0,    # t=2.80E02
-    282.0,    # t=2.82E02
-    284.0,    # t=2.84E02
-    286.0,    # t=2.86E02
-    288.0,    # t=2.88E02
-    290.0,    # t=2.90E02
-    292.0,    # t=2.92E02
-    294.0,    # t=2.94E02
-    295.0,    # t=2.95E02
-    295.5,    # t=2.955E02
-    296.0,    # t=2.96E02
-    296.5,    # t=2.965E02
-    297.0,    # t=2.97E02
-    297.5,    # t=2.975E02
-    298.0,    # t=2.98E02
-    298.5,    # t=2.985E02
-    299.0,    # t=2.99E02
-    299.5,    # t=2.995E02
-    300.0,    # t=3.00E02
+    0.0, 132.0, 210.0, 240.0, 262.0, 270.0, 274.0, 280.0, 282.0, 284.0,
+    286.0, 288.0, 290.0, 292.0, 294.0, 295.0, 295.5, 296.0, 296.5, 297.0,
+    297.5, 298.0, 298.5, 299.0, 299.5, 300.0,
 ])
 
 ref_1959_QP = np.array([
-    3484.515,  # Initial (TOTAL INTERNAL ENERGY = 3.484515E03)
-    3842.258,  # t=132
-    4614.118,  # t=210
-    5194.141,  # t=240
-    5790.050,  # t=262
-    6052.932,  # t=270
-    6194.982,  # t=274
-    6422.045,  # t=280
-    6501.495,  # t=282
-    6582.751,  # t=284
-    6665.751,  # t=286
-    6750.404,  # t=288
-    6836.587,  # t=290
-    6924.139,  # t=292
-    7012.855,  # t=294
-    7057.554,  # t=295
-    7079.975,  # t=295.5
-    7102.438,  # t=296
-    7124.940,  # t=296.5
-    7147.474,  # t=297
-    7170.036,  # t=297.5
-    7192.619,  # t=298
-    7215.218,  # t=298.5
-    7237.827,  # t=299
-    7260.439,  # t=299.5
-    7283.048,  # t=300
+    3484.515, 3842.258, 4614.118, 5194.141, 5790.050, 6052.932, 6194.982,
+    6422.045, 6501.495, 6582.751, 6665.751, 6750.404, 6836.587, 6924.139,
+    7012.855, 7057.554, 7079.975, 7102.438, 7124.940, 7147.474, 7170.036,
+    7192.619, 7215.218, 7237.827, 7260.439, 7283.048,
 ])
 
 ref_1959_power = np.array([
-    1.0,       # Initial (normalized)
-    5.617822,  # t=132
-    15.58345,  # t=210
-    23.07269,  # t=240
-    30.76770,  # t=262
-    34.16063,  # t=270
-    35.97139,  # t=274
-    38.80450,  # t=280
-    39.72579,  # t=282
-    40.62824,  # t=284
-    41.50012,  # t=286
-    42.32701,  # t=288
-    43.09212,  # t=290
-    43.77629,  # t=292
-    44.35807,  # t=294
-    44.69970,  # t=295
-    44.84325,  # t=295.5
-    44.92919,  # t=296
-    45.00503,  # t=296.5
-    45.07040,  # t=297
-    45.12488,  # t=297.5
-    45.16808,  # t=298
-    45.19958,  # t=298.5
-    45.21895,  # t=299
-    45.22577,  # t=299.5 - PEAK POWER!
-    45.21964,  # t=300 - starting to decrease
+    1.0, 5.617822, 15.58345, 23.07269, 30.76770, 34.16063, 35.97139,
+    38.80450, 39.72579, 40.62824, 41.50012, 42.32701, 43.09212, 43.77629,
+    44.35807, 44.69970, 44.84325, 44.92919, 45.00503, 45.07040, 45.12488,
+    45.16808, 45.19958, 45.21895, 45.22577, 45.21964,
 ])
 
-# Alpha values from 1959 paper - extracted directly
 ref_1959_alpha = np.array([
-    0.013084,    # Initial target
-    0.01307967,  # t=132
-    0.01308135,  # t=210
-    0.01308255,  # t=240
-    0.01307606,  # t=262
-    0.01291253,  # t=270 - starting to decrease!
-    0.01263538,  # t=274
-    0.01173227,  # t=280
-    0.01123132,  # t=282
-    0.01061646,  # t=284
-    0.00986464,  # t=286
-    0.00895733,  # t=288
-    0.00787613,  # t=290
-    0.00660121,  # t=292
-    0.00511474,  # t=294
-    0.00427507,  # t=295
-    0.00382939,  # t=295.5
-    0.00337305,  # t=296
-    0.00290279,  # t=296.5
-    0.00241626,  # t=297
-    0.00191396,  # t=297.5
-    0.00139451,  # t=298
-    0.00085673,  # t=298.5
-    0.00030183,  # t=299
-    -0.00027106, # t=299.5 - ALPHA GOES NEGATIVE!
-    -0.00086276, # t=300
+    0.013084, 0.01307967, 0.01308135, 0.01308255, 0.01307606, 0.01291253,
+    0.01263538, 0.01173227, 0.01123132, 0.01061646, 0.00986464, 0.00895733,
+    0.00787613, 0.00660121, 0.00511474, 0.00427507, 0.00382939, 0.00337305,
+    0.00290279, 0.00241626, 0.00191396, 0.00139451, 0.00085673, 0.00030183,
+    -0.00027106, -0.00086276,
 ])
 
-# W values from 1959 paper - extracted directly
 ref_1959_W = np.array([
-    0.0,       # t=0
-    0.03390,   # t=132
-    0.07019,   # t=210
-    0.09746,   # t=240
-    0.13505,   # t=262
-    0.15616,   # t=270
-    0.16737,   # t=274
-    0.19287,   # t=280
-    0.19803,   # t=282
-    0.19194,   # t=284
-    0.19578,   # t=286
-    0.19961,   # t=288
-    0.21781,   # t=290
-    0.22937,   # t=292
-    0.21921,   # t=294
-    0.08428,   # t=295 - TIME STEP HALVED!
-    0.03102,   # t=295.5
-    0.02742,   # t=296
-    0.03258,   # t=296.5
-    0.03735,   # t=297
-    0.04068,   # t=297.5
-    0.04233,   # t=298
-    0.04214,   # t=298.5
-    0.04009,   # t=299
-    0.03625,   # t=299.5
-    0.03206,   # t=300
+    0.0, 0.03390, 0.07019, 0.09746, 0.13505, 0.15616, 0.16737, 0.19287,
+    0.19803, 0.19194, 0.19578, 0.19961, 0.21781, 0.22937, 0.21921, 0.08428,
+    0.03102, 0.02742, 0.03258, 0.03735, 0.04068, 0.04233, 0.04214, 0.04009,
+    0.03625, 0.03206,
 ])
 
 # =============================================================================
-# Load our simulation results
+# Load simulation data
 # =============================================================================
 
 def load_simulation_data(csv_file):
     """Load simulation data from CSV file."""
     df = pd.read_csv(csv_file)
-    # Clean column names (remove leading/trailing spaces)
     df.columns = df.columns.str.strip()
     return df
 
@@ -189,230 +76,304 @@ def load_simulation_data(csv_file):
 # Plotting functions
 # =============================================================================
 
-def plot_QP_comparison(ref_time, ref_QP, sim_time, sim_QP, output_file):
-    """Plot total energy QP comparison."""
-    fig, ax = plt.subplots(figsize=(10, 7))
+def plot_combined_comparison(ref_time, ref_QP, ref_power, ref_alpha, ref_W,
+                             sim_time, sim_QP, sim_power, sim_alpha, sim_W,
+                             output_file):
+    """Create a 2x2 subplot with all comparisons - publication quality."""
     
-    ax.plot(ref_time, ref_QP, 'o-', color='blue', linewidth=2, markersize=8, 
-            label='1959 ANL-5977 Reference')
-    ax.plot(sim_time, sim_QP, 's--', color='red', linewidth=2, markersize=6,
-            label='Current Simulation')
+    # Smaller figure for larger relative fonts
+    fig, axes = plt.subplots(2, 2, figsize=(6.5, 5.5))
     
-    ax.set_xlabel('Time (μsec)')
-    ax.set_ylabel('Total Energy QP (10^12 ergs)')
-    ax.set_title('Geneva 10: Total Energy vs Time')
-    ax.legend(loc='upper left')
-    ax.grid(True, alpha=0.3)
+    # Colors
+    ref_color = '#1f77b4'  # Blue
+    sim_color = '#d62728'  # Red
+    
+    # (a) QP - Total Energy
+    ax = axes[0, 0]
+    ax.plot(ref_time, ref_QP, 'o', color=ref_color, markersize=4, 
+            label='1959 Reference', markerfacecolor='none', markeredgewidth=1)
+    ax.plot(sim_time, sim_QP, '-', color=sim_color, linewidth=1, label='Simulation')
+    ax.set_xlabel(r'Time ($\mu$s)')
+    ax.set_ylabel(r'$Q_P$ ($10^{12}$ erg)')
+    ax.set_title('(a) Total Energy', fontsize=11, loc='left')
+    ax.legend(loc='upper left', framealpha=0.9)
+    ax.set_xlim(0, 300)
+    
+    # (b) Power
+    ax = axes[0, 1]
+    ax.semilogy(ref_time[1:], ref_power[1:], 'o', color=ref_color, markersize=4,
+                label='1959 Reference', markerfacecolor='none', markeredgewidth=1)
+    ax.semilogy(sim_time, sim_power, '-', color=sim_color, linewidth=1, label='Simulation')
+    ax.set_xlabel(r'Time ($\mu$s)')
+    ax.set_ylabel(r'Relative Power')
+    ax.set_title('(b) Power', fontsize=11, loc='left')
+    ax.legend(loc='upper left', framealpha=0.9)
+    ax.set_xlim(0, 300)
+    
+    # (c) Alpha
+    ax = axes[1, 0]
+    ax.plot(ref_time, ref_alpha * 1000, 'o', color=ref_color, markersize=4,
+            label='1959 Reference', markerfacecolor='none', markeredgewidth=1)
+    ax.plot(sim_time, sim_alpha * 1000, '-', color=sim_color, linewidth=1, label='Simulation')
+    ax.axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+    ax.set_xlabel(r'Time ($\mu$s)')
+    ax.set_ylabel(r'$\alpha$ ($10^{-3}$ $\mu$s$^{-1}$)')
+    ax.set_title(r'(c) Inverse Period $\alpha$', fontsize=11, loc='left')
+    ax.legend(loc='upper right', framealpha=0.9)
+    ax.set_xlim(0, 300)
+    
+    # (d) W - skip initial jump by filtering sim_time > 50
+    ax = axes[1, 1]
+    ax.plot(ref_time, ref_W, 'o', color=ref_color, markersize=4,
+            label='1959 Reference', markerfacecolor='none', markeredgewidth=1)
+    # Filter W data to skip initial jump
+    W_mask = sim_time > 50
+    ax.plot(sim_time[W_mask], sim_W[W_mask], '-', color=sim_color, linewidth=1, label='Simulation')
+    ax.axhline(y=0.3, color='orange', linestyle='--', linewidth=1, label=r'$W$ limit')
+    ax.set_xlabel(r'Time ($\mu$s)')
+    ax.set_ylabel(r'$W$')
+    ax.set_title('(d) Stability Parameter', fontsize=11, loc='left')
+    ax.legend(loc='upper left', framealpha=0.9, fontsize=8)
+    ax.set_ylim(0, 0.35)
+    ax.set_xlim(0, 300)
     
     plt.tight_layout()
-    plt.savefig(output_file, dpi=150, bbox_inches='tight')
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Saved: {output_file}")
+
+def plot_QP_comparison(ref_time, ref_QP, sim_time, sim_QP, output_file):
+    """Plot total energy QP comparison."""
+    fig, ax = plt.subplots(figsize=(5, 4))
+    
+    ax.plot(ref_time, ref_QP, 'o', color='#1f77b4', markersize=5, 
+            label='1959 Reference', markerfacecolor='none', markeredgewidth=1.2)
+    ax.plot(sim_time, sim_QP, '-', color='#d62728', linewidth=1.2, label='Simulation')
+    
+    ax.set_xlabel(r'Time ($\mu$s)')
+    ax.set_ylabel(r'$Q_P$ ($10^{12}$ erg)')
+    ax.legend(loc='upper left')
+    ax.set_xlim(0, 300)
+    
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"Saved: {output_file}")
 
 def plot_power_comparison(ref_time, ref_power, sim_time, sim_power, output_file):
     """Plot power comparison."""
-    fig, ax = plt.subplots(figsize=(10, 7))
+    fig, ax = plt.subplots(figsize=(5, 4))
     
-    ax.semilogy(ref_time, ref_power, 'o-', color='blue', linewidth=2, markersize=8,
-                label='1959 ANL-5977 Reference')
-    ax.semilogy(sim_time, sim_power, 's--', color='red', linewidth=2, markersize=6,
-                label='Current Simulation')
+    ax.semilogy(ref_time[1:], ref_power[1:], 'o', color='#1f77b4', markersize=5,
+                label='1959 Reference', markerfacecolor='none', markeredgewidth=1.2)
+    ax.semilogy(sim_time, sim_power, '-', color='#d62728', linewidth=1.2, label='Simulation')
     
-    ax.set_xlabel('Time (μsec)')
-    ax.set_ylabel('Relative Power')
-    ax.set_title('Geneva 10: Power vs Time (Log Scale)')
+    ax.set_xlabel(r'Time ($\mu$s)')
+    ax.set_ylabel(r'Relative Power')
     ax.legend(loc='upper left')
-    ax.grid(True, alpha=0.3, which='both')
+    ax.set_xlim(0, 300)
     
     plt.tight_layout()
-    plt.savefig(output_file, dpi=150, bbox_inches='tight')
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"Saved: {output_file}")
 
 def plot_alpha_comparison(ref_time, ref_alpha, sim_time, sim_alpha, output_file):
-    """Plot alpha (inverse period) comparison."""
-    fig, ax = plt.subplots(figsize=(10, 7))
+    """Plot alpha comparison."""
+    fig, ax = plt.subplots(figsize=(5, 4))
     
-    ax.plot(ref_time, ref_alpha * 1000, 'o-', color='blue', linewidth=2, markersize=8,
-            label='1959 ANL-5977 Reference')
-    ax.plot(sim_time, sim_alpha * 1000, 's--', color='red', linewidth=2, markersize=6,
-            label='Current Simulation')
+    ax.plot(ref_time, ref_alpha * 1000, 'o', color='#1f77b4', markersize=5,
+            label='1959 Reference', markerfacecolor='none', markeredgewidth=1.2)
+    ax.plot(sim_time, sim_alpha * 1000, '-', color='#d62728', linewidth=1.2, label='Simulation')
+    ax.axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
     
-    ax.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
-    ax.set_xlabel('Time (μsec)')
-    ax.set_ylabel('Alpha (10^-3 / μsec)')
-    ax.set_title('Geneva 10: Reactivity Parameter α vs Time')
+    ax.set_xlabel(r'Time ($\mu$s)')
+    ax.set_ylabel(r'$\alpha$ ($10^{-3}$ $\mu$s$^{-1}$)')
     ax.legend(loc='upper right')
-    ax.grid(True, alpha=0.3)
+    ax.set_xlim(0, 300)
     
     plt.tight_layout()
-    plt.savefig(output_file, dpi=150, bbox_inches='tight')
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"Saved: {output_file}")
 
 def plot_W_comparison(ref_time, ref_W, sim_time, sim_W, output_file):
-    """Plot W stability parameter comparison."""
-    fig, ax = plt.subplots(figsize=(10, 7))
+    """Plot W comparison."""
+    fig, ax = plt.subplots(figsize=(5, 4))
     
-    ax.plot(ref_time, ref_W, 'o-', color='blue', linewidth=2, markersize=8,
-            label='1959 ANL-5977 Reference')
-    ax.plot(sim_time, sim_W, 's--', color='red', linewidth=2, markersize=6,
-            label='Current Simulation')
+    ax.plot(ref_time, ref_W, 'o', color='#1f77b4', markersize=5,
+            label='1959 Reference', markerfacecolor='none', markeredgewidth=1.2)
+    # Skip initial jump
+    W_mask = sim_time > 50
+    ax.plot(sim_time[W_mask], sim_W[W_mask], '-', color='#d62728', linewidth=1.2, label='Simulation')
+    ax.axhline(y=0.3, color='orange', linestyle='--', linewidth=1, label=r'$W$ limit')
     
-    ax.axhline(y=0.3, color='orange', linestyle='--', linewidth=1.5, label='W limit (0.3)')
-    ax.set_xlabel('Time (μsec)')
-    ax.set_ylabel('W (dimensionless)')
-    ax.set_title('Geneva 10: Stability Parameter W vs Time')
+    ax.set_xlabel(r'Time ($\mu$s)')
+    ax.set_ylabel(r'$W$')
     ax.legend(loc='upper left')
-    ax.grid(True, alpha=0.3)
-    ax.set_ylim(0, 0.5)
+    ax.set_ylim(0, 0.35)
+    ax.set_xlim(0, 300)
     
     plt.tight_layout()
-    plt.savefig(output_file, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"Saved: {output_file}")
-
-def plot_combined_comparison(ref_time, ref_QP, ref_power, ref_alpha, ref_W,
-                             sim_time, sim_QP, sim_power, sim_alpha, sim_W,
-                             output_file):
-    """Create a 2x2 subplot with all comparisons."""
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-    
-    # QP
-    ax = axes[0, 0]
-    ax.plot(ref_time, ref_QP, 'o-', color='blue', linewidth=2, markersize=6, label='1959 Reference')
-    ax.plot(sim_time, sim_QP, 's--', color='red', linewidth=2, markersize=4, label='Simulation')
-    ax.set_xlabel('Time (μsec)')
-    ax.set_ylabel('QP (10^12 ergs)')
-    ax.set_title('Total Energy')
-    ax.legend(loc='upper left', fontsize=10)
-    ax.grid(True, alpha=0.3)
-    
-    # Power
-    ax = axes[0, 1]
-    ax.semilogy(ref_time, ref_power, 'o-', color='blue', linewidth=2, markersize=6, label='1959 Reference')
-    ax.semilogy(sim_time, sim_power, 's--', color='red', linewidth=2, markersize=4, label='Simulation')
-    ax.set_xlabel('Time (μsec)')
-    ax.set_ylabel('Relative Power')
-    ax.set_title('Power (Log Scale)')
-    ax.legend(loc='upper left', fontsize=10)
-    ax.grid(True, alpha=0.3, which='both')
-    
-    # Alpha
-    ax = axes[1, 0]
-    ax.plot(ref_time, ref_alpha * 1000, 'o-', color='blue', linewidth=2, markersize=6, label='1959 Reference')
-    ax.plot(sim_time, sim_alpha * 1000, 's--', color='red', linewidth=2, markersize=4, label='Simulation')
-    ax.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
-    ax.set_xlabel('Time (μsec)')
-    ax.set_ylabel('Alpha (10^-3 / μsec)')
-    ax.set_title('Reactivity Parameter')
-    ax.legend(loc='upper right', fontsize=10)
-    ax.grid(True, alpha=0.3)
-    
-    # W
-    ax = axes[1, 1]
-    ax.plot(ref_time, ref_W, 'o-', color='blue', linewidth=2, markersize=6, label='1959 Reference')
-    ax.plot(sim_time, sim_W, 's--', color='red', linewidth=2, markersize=4, label='Simulation')
-    ax.axhline(y=0.3, color='orange', linestyle='--', linewidth=1.5, label='W limit')
-    ax.set_xlabel('Time (μsec)')
-    ax.set_ylabel('W')
-    ax.set_title('Stability Parameter (W ~ dt^2)')
-    ax.legend(loc='upper left', fontsize=9)
-    ax.grid(True, alpha=0.3)
-    ax.set_ylim(0, 0.5)
-    
-    plt.suptitle('Geneva 10 Transient: 1959 ANL-5977 vs Current Simulation', fontsize=16, y=1.02)
-    plt.tight_layout()
-    plt.savefig(output_file, dpi=150, bbox_inches='tight')
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"Saved: {output_file}")
 
 def create_comparison_table(ref_time, ref_QP, ref_power, ref_alpha,
                             sim_time, sim_QP, sim_power, sim_alpha, output_file):
-    """Create a comparison table at key time points using filtered data."""
-    
-    # Key time points for comparison
+    """Create a comparison table at key time points."""
     key_times = [0, 50, 100, 150, 200, 250, 300]
     
     rows = []
     for t in key_times:
-        # Find closest reference point
         ref_idx = np.argmin(np.abs(ref_time - t))
-        
-        # Find closest simulation point
         sim_idx = np.argmin(np.abs(sim_time - t))
         
         if ref_idx < len(ref_time) and sim_idx < len(sim_time):
             row = {
-                'Time (μsec)': t,
+                'Time': t,
                 'Ref QP': f"{ref_QP[ref_idx]:.1f}",
                 'Sim QP': f"{sim_QP[sim_idx]:.1f}",
                 'Ref Power': f"{ref_power[ref_idx]:.2f}",
                 'Sim Power': f"{sim_power[sim_idx]:.2f}",
-                'Ref α (10^-3)': f"{ref_alpha[ref_idx]*1000:.3f}",
-                'Sim α (10^-3)': f"{sim_alpha[sim_idx]*1000:.3f}",
+                'Ref α': f"{ref_alpha[ref_idx]*1000:.3f}",
+                'Sim α': f"{sim_alpha[sim_idx]*1000:.3f}",
             }
             rows.append(row)
     
     df = pd.DataFrame(rows)
-    
-    # Save to file
     with open(output_file, 'w') as f:
-        f.write("=" * 90 + "\n")
-        f.write("Geneva 10 Transient Comparison: 1959 ANL-5977 vs Current Simulation\n")
-        f.write("=" * 90 + "\n\n")
+        f.write("Geneva 10 Comparison: 1959 ANL-5977 vs Simulation\n")
+        f.write("=" * 70 + "\n")
         f.write(df.to_string(index=False))
-        f.write("\n\n")
-        f.write("Notes:\n")
-        f.write("- QP: Total energy in 10^12 ergs\n")
-        f.write("- Power: Relative power (initial = 1.0)\n")
-        f.write("- α: Reactivity parameter in 10^-3 μsec^-1\n")
-        f.write("\nKey observations from 1959 paper:\n")
-        f.write("- Alpha stays ~constant (0.0130-0.0131) until t~270 μsec\n")
-        f.write("- Hydrodynamic expansion begins around t~270-280 μsec\n")
-        f.write("- Alpha goes negative around t~299.5 μsec\n")
-        f.write("- Peak power ~45 at t~300 μsec, then decreases\n")
-    
     print(f"Saved: {output_file}")
     return df
+
+
+def plot_spatial_profiles(output_dir, output_file):
+    """Plot spatial profiles at multiple times showing expansion."""
+    # Load spatial data at different times
+    times = [0, 100, 200, 250, 280]
+    spatial_data = {}
+    
+    # Look in the project root (two levels up from analysis/figures)
+    project_root = output_dir.parent.parent
+    
+    for t in times:
+        csv_file = project_root / f'output_spatial_t{t}.csv'
+        if csv_file.exists():
+            df = pd.read_csv(csv_file)
+            df.columns = df.columns.str.strip()
+            spatial_data[t] = df
+            print(f"Loaded spatial data for t={t}")
+    
+    if len(spatial_data) < 2:
+        print(f"Not enough spatial data files found in {project_root}")
+        return
+    
+    # Get initial state for computing changes
+    df0 = spatial_data[0]
+    
+    # Create 2x2 subplot for spatial profiles
+    fig, axes = plt.subplots(2, 2, figsize=(6.5, 5.5))
+    
+    # Color map for different times (skip t=0 for change plots)
+    colors_all = plt.cm.plasma(np.linspace(0.1, 0.9, len(times)))
+    colors_change = plt.cm.plasma(np.linspace(0.2, 0.9, len(times)-1))
+    
+    # (a) Radius change from initial (shows expansion more clearly)
+    ax = axes[0, 0]
+    for i, t in enumerate(times[1:]):  # Skip t=0
+        if t in spatial_data:
+            df = spatial_data[t]
+            delta_r = df['radius_cm'].values - df0['radius_cm'].values
+            ax.plot(df0['radius_cm'], delta_r, '-', color=colors_change[i], 
+                    linewidth=1.5, label=f't = {t} $\\mu$s')
+    ax.set_xlabel('Initial Radius (cm)')
+    ax.set_ylabel(r'$\Delta R$ (cm)')
+    ax.set_title('(a) Radial Expansion', fontsize=11, loc='left')
+    ax.legend(loc='upper left', fontsize=7)
+    ax.axhline(y=0, color='gray', linestyle='--', linewidth=0.5)
+    
+    # (b) Temperature vs radius - keep as is, it looks great
+    ax = axes[0, 1]
+    for i, t in enumerate(times):
+        if t in spatial_data:
+            df = spatial_data[t]
+            ax.plot(df['radius_cm'], df['temperature_keV'] * 1000, '-', color=colors_all[i],
+                    linewidth=1.5, label=f't = {t} $\\mu$s')
+    ax.set_xlabel('Radius (cm)')
+    ax.set_ylabel('Temperature (eV)')
+    ax.set_title('(b) Temperature Profile', fontsize=11, loc='left')
+    ax.legend(loc='upper right', fontsize=7)
+    
+    # (c) Density change from initial (shows compression/expansion)
+    ax = axes[1, 0]
+    for i, t in enumerate(times[1:]):  # Skip t=0
+        if t in spatial_data:
+            df = spatial_data[t]
+            # Compute percent change in density
+            delta_rho = 100 * (df['density_g_cm3'].values - df0['density_g_cm3'].values) / df0['density_g_cm3'].values
+            ax.plot(df0['radius_cm'], delta_rho, '-', color=colors_change[i],
+                    linewidth=1.5, label=f't = {t} $\\mu$s')
+    ax.set_xlabel('Initial Radius (cm)')
+    ax.set_ylabel(r'$\Delta\rho/\rho_0$ (%)')
+    ax.set_title('(c) Density Change', fontsize=11, loc='left')
+    ax.legend(loc='lower right', fontsize=7)
+    ax.axhline(y=0, color='gray', linestyle='--', linewidth=0.5)
+    
+    # (d) Velocity vs initial radius
+    ax = axes[1, 1]
+    for i, t in enumerate(times[1:]):  # Skip t=0 (zero velocity)
+        if t in spatial_data:
+            df = spatial_data[t]
+            ax.plot(df0['radius_cm'], df['velocity_cm_microsec'] * 1000, '-', color=colors_change[i],
+                    linewidth=1.5, label=f't = {t} $\\mu$s')
+    ax.set_xlabel('Initial Radius (cm)')
+    ax.set_ylabel(r'Velocity ($10^{-3}$ cm/$\mu$s)')
+    ax.set_title('(d) Velocity Profile', fontsize=11, loc='left')
+    ax.legend(loc='upper left', fontsize=7)
+    ax.axhline(y=0, color='gray', linestyle='--', linewidth=0.5)
+    
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Saved: {output_file}")
 
 # =============================================================================
 # Main
 # =============================================================================
 
 if __name__ == "__main__":
-    # Create output directory (relative to script location)
     output_dir = Path(__file__).parent / "figures"
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Load simulation data
     csv_file = Path(__file__).parent.parent / "output_time_series.csv"
     if csv_file.exists():
         sim_data = load_simulation_data(csv_file)
         print(f"Loaded simulation data: {len(sim_data)} time points")
         
-        # Extract simulation arrays
         sim_time = sim_data['time_microsec'].values
         sim_QP = sim_data['QP_1e12_erg'].values
         sim_power = sim_data['power_relative'].values
         sim_alpha = sim_data['alpha_1_microsec'].values
         sim_W = sim_data['W_dimensionless'].values
         
-        # Filter out blowup points (where values become unphysical)
-        # Keep only points where QP < 1e6 (reasonable range)
-        # Also skip the first data point (t < 1 μsec) which has initialization artifacts
+        # Filter invalid points
         valid_mask = (sim_time > 1.0) & (sim_QP < 1e6) & (np.abs(sim_alpha) < 1.0) & (sim_W < 10)
         sim_time = sim_time[valid_mask]
         sim_QP = sim_QP[valid_mask]
         sim_power = sim_power[valid_mask]
         sim_alpha = sim_alpha[valid_mask]
         sim_W = sim_W[valid_mask]
-        print(f"After filtering blowup points: {len(sim_time)} time points")
-        
-        # Clip W values for plotting (some may be very large)
         sim_W_plot = np.clip(sim_W, 0, 1.0)
+        print(f"After filtering: {len(sim_time)} time points")
         
         # Generate plots
+        plot_combined_comparison(ref_1959_time, ref_1959_QP, ref_1959_power, ref_1959_alpha, ref_1959_W,
+                                sim_time, sim_QP, sim_power, sim_alpha, sim_W_plot,
+                                output_dir / "geneva10_combined_comparison.png")
+        
         plot_QP_comparison(ref_1959_time, ref_1959_QP, sim_time, sim_QP,
                           output_dir / "geneva10_QP_comparison.png")
         
@@ -425,17 +386,13 @@ if __name__ == "__main__":
         plot_W_comparison(ref_1959_time, ref_1959_W, sim_time, sim_W_plot,
                          output_dir / "geneva10_W_comparison.png")
         
-        plot_combined_comparison(ref_1959_time, ref_1959_QP, ref_1959_power, ref_1959_alpha, ref_1959_W,
-                                sim_time, sim_QP, sim_power, sim_alpha, sim_W_plot,
-                                output_dir / "geneva10_combined_comparison.png")
-        
-        # Create comparison table (using filtered data)
         create_comparison_table(ref_1959_time, ref_1959_QP, ref_1959_power, ref_1959_alpha,
                                sim_time, sim_QP, sim_power, sim_alpha,
                                output_dir / "geneva10_comparison_table.txt")
         
-        print("\nAll comparison plots and tables generated!")
+        # Generate spatial profile plots
+        plot_spatial_profiles(output_dir, output_dir / "geneva10_spatial_profiles.png")
         
+        print("\nAll plots generated!")
     else:
         print(f"Error: Could not find {csv_file}")
-        print("Please run the simulation first to generate output data.")

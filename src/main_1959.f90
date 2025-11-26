@@ -38,7 +38,11 @@ program ax1_1959
   integer :: big_g_iter, hydro_iter, iz
   logical :: terminate, halve_dt, double_dt, increase_ns4
   real(rk) :: last_output_time, output_time_interval
-  logical :: write_spatial_at_200
+  ! Spatial output at multiple times
+  real(rk), parameter :: spatial_times(6) = [0._rk, 100._rk, 200._rk, 250._rk, 280._rk, 300._rk]
+  logical :: spatial_written(6) = .false.
+  integer :: isp
+  character(len=64) :: spatial_filename
   character(len=256) :: term_reason, input_file
   real(rk) :: alpha_out, k_out
   real(rk) :: delt_outer, delt_sub, qbar_cycle, ns4_real
@@ -70,11 +74,9 @@ program ax1_1959
   output_unit = 20
   csv_time_unit = 21
   csv_spatial_unit = 22
-  write_spatial_at_200 = .false.
   
   open(unit=output_unit, file=trim(control%output_file), status='replace', action='write')
   open(unit=csv_time_unit, file='output_time_series.csv', status='replace', action='write')
-  open(unit=csv_spatial_unit, file='output_spatial_t200.csv', status='replace', action='write')
   
   ! Write CSV headers
   call write_csv_header_time(csv_time_unit)
@@ -440,14 +442,18 @@ program ax1_1959
       
       last_output_time = state%TIME
       
-      ! Write spatial profile at t=200 μsec (within tolerance)
-      if (.not. write_spatial_at_200 .and. abs(state%TIME - 200.0_rk) < 5.0_rk) then
-        call write_csv_header_spatial(csv_spatial_unit)
-        call write_csv_step_spatial(state, csv_spatial_unit)
-        flush(csv_spatial_unit)
-        write_spatial_at_200 = .true.
-        print *, "Wrote spatial profile at t =", state%TIME, " μsec"
-      end if
+      ! Write spatial profiles at target times (0, 100, 200, 250, 280, 300 μsec)
+      do isp = 1, 6
+        if (.not. spatial_written(isp) .and. abs(state%TIME - spatial_times(isp)) < 5.0_rk) then
+          write(spatial_filename, '(A,I0,A)') 'output_spatial_t', nint(spatial_times(isp)), '.csv'
+          open(unit=csv_spatial_unit, file=trim(spatial_filename), status='replace', action='write')
+          call write_csv_header_spatial(csv_spatial_unit)
+          call write_csv_step_spatial(state, csv_spatial_unit)
+          close(csv_spatial_unit)
+          spatial_written(isp) = .true.
+          print *, "Wrote spatial profile:", trim(spatial_filename)
+        end if
+      end do
     end if
     
     ! ==========================================================================
@@ -511,7 +517,6 @@ program ax1_1959
   ! Close output files
   close(output_unit)
   close(csv_time_unit)
-  close(csv_spatial_unit)
   
   print *, "========================================="
   print *, "SIMULATION COMPLETE"

@@ -8,7 +8,7 @@
 
 \begin{document}
 
-\title{Faithful Reproduction of the 1959 AX-1 Coupled Neutronics-Hydrodynamics Code}
+\title{Reproducing the 1959 AX-1 Code: Implementation Report}
 
 \author{M. Hasyim}
 \affiliation{Department of Physics, University of California, Berkeley, CA 94720, USA}
@@ -16,52 +16,62 @@
 \date{\today}
 
 \begin{abstract}
-We report a modern Fortran implementation of AX-1, a coupled neutronics-hydrodynamics code developed at Argonne National Laboratory in 1959 for fast reactor safety analysis. The original code ran on an IBM-704 using punched cards; our version preserves its algorithms while adopting modern software practices. We document the order-by-order correspondence between the original Fortran listing (ANL-5977) and our implementation, verified against the published flow diagrams. Validation against the Geneva~10 benchmark demonstrates close agreement with the 1959 reference calculations.
+This report documents our effort to reproduce AX-1, a coupled neutronics-hydrodynamics code developed at Argonne National Laboratory in 1959 for fast reactor safety analysis. We have created a modern Fortran implementation that preserves the original algorithms while using contemporary software practices. The report includes a detailed mapping between our code and the original Fortran listing from ANL-5977, identifies several control logic features that proved essential for matching the published results, and presents validation against the Geneva~10 benchmark.
 \end{abstract}
 
 \maketitle
 
-\section{Introduction}
+\section{Background}
 
-The AX-1 code~\cite{ANL5977} emerged from the urgent need to understand what happens when a fast reactor goes prompt supercritical. Developed at Argonne for the IBM-704, it coupled S$_4$ discrete ordinates neutron transport with spherical Lagrangian hydrodynamics---a combination that could track how nuclear heating drives material expansion, and how that expansion in turn shuts down the reaction. The code played a central role in Bethe-Tait accident analysis~\cite{BetheTait1956} for early fast reactor designs.
+The AX-1 code~\cite{ANL5977} was developed at Argonne to analyze what happens when a fast reactor goes prompt supercritical. The original version ran on an IBM-704 using punched cards. It coupled S$_4$ discrete ordinates neutron transport with spherical Lagrangian hydrodynamics, allowing it to track how nuclear heating drives material expansion, and how that expansion eventually shuts down the chain reaction. The code supported the Bethe-Tait safety analysis~\cite{BetheTait1956} that was standard for early fast reactor designs.
 
-Our goal was to reproduce this code faithfully. Not to improve it, modernize its physics, or extend its capabilities, but simply to verify that we understand exactly what it computed and why. This required working through the original Fortran listing line by line, cross-referencing against the flow diagrams published in ANL-5977 (pp.~27--36), and testing against the benchmark results reported in that document.
+Our task was to reproduce this code as faithfully as possible. We wanted to verify that we understand exactly what it computed. This meant working through the original Fortran listing line by line, checking our implementation against the flow diagrams in ANL-5977 (pages 27 through 36), and comparing our output against the benchmark results in that document.
 
-The exercise proved more involved than we initially expected. The 1959 code contains numerous control logic branches---adaptive time stepping, frequency adjustments for the neutronics-hydrodynamics coupling, shutdown detection---that are easy to overlook on first reading. Several of these turned out to be essential for reproducing the published results. This paper documents what we learned.
+The work turned out to be more involved than we expected. The 1959 code contains adaptive logic for time stepping and for adjusting how often different physics modules run. Several of these features are easy to miss on first reading, but they proved essential for matching the published results.
 
-\section{Physical Model}
+\section{The Physics}
 
 \subsection{Neutron Transport}
 
-The code solves an $\alpha$-eigenvalue form of the transport equation in spherical geometry:
+The code solves an eigenvalue problem for the neutron angular flux $\psi$. The eigenvalue $\alpha$ represents the asymptotic growth or decay rate of the neutron population. We look for solutions of the form $\psi(\mathbf{r}, \boldsymbol{\Omega}, t) = \psi(\mathbf{r}, \boldsymbol{\Omega}) e^{\alpha t}$. Substituting into the time-dependent transport equation gives
 \begin{equation}
 \frac{\alpha\psi}{v} + \mu \frac{\partial \psi}{\partial r} + \frac{1-\mu^2}{r}\frac{\partial \psi}{\partial \mu} + \Sigma_t \psi = S[\psi]
+\label{eq:transport}
 \end{equation}
-Here $\alpha$ represents the asymptotic time constant: positive when the reactor is supercritical, negative when subcritical. The S$_4$ quadrature discretizes the angular variable using four directions with the specific constants listed in ANL-5977. Delayed neutrons are neglected entirely---a reasonable approximation for prompt transients evolving on microsecond timescales.
+Here $v$ is the neutron speed, $\mu$ is the cosine of the angle with respect to the radial direction, $r$ is radius, $\Sigma_t$ is the total cross section, and $S[\psi]$ is the scattering and fission source.
 
-\subsection{Lagrangian Hydrodynamics}
+The first term on the left is the time derivative contribution. The second term represents radial streaming. The third term accounts for the angular redistribution that occurs in curved geometry. The fourth term is the collision rate.
 
-Material motion follows Lagrangian coordinates, meaning each mesh point tracks a fixed mass element as it moves:
+When $\alpha$ is positive, the neutron population grows exponentially and the reactor is supercritical. When $\alpha$ is negative, the population decays. The quantity $1/\alpha$ is the reactor period. For the initial condition in our benchmark ($\alpha = 0.0131$~$\mu$s$^{-1}$), the period is about 76~$\mu$s.
+
+The angular dependence is discretized using S$_4$ quadrature, which uses four discrete directions with weights specified in ANL-5977. The code neglects delayed neutrons. This is reasonable for prompt transients that evolve on microsecond timescales, since delayed neutron precursors decay on timescales of seconds to minutes.
+
+\subsection{Hydrodynamics}
+
+The code follows material motion using Lagrangian coordinates. Each computational mesh point tracks a fixed mass of material as it moves. The equations are
 \begin{align}
-\frac{\partial R}{\partial t} &= U \\
-\frac{\partial U}{\partial t} &= -\frac{R^2}{R_L^2}\frac{\partial P}{\partial R_L}
+\frac{\partial R}{\partial t} &= U \label{eq:position}\\
+\frac{\partial U}{\partial t} &= -\frac{R^2}{R_L^2}\frac{\partial P}{\partial R_L} \label{eq:momentum}
 \end{align}
-The Lagrangian radius $R_L$ is defined through mass conservation. Shocks are handled using von Neumann-Richtmyer artificial viscosity~\cite{VNR1950}, which smears discontinuities over a few zones rather than attempting to capture them sharply.
+The first equation says that position $R$ changes at velocity $U$. The second is the momentum equation. The factor $R^2/R_L^2$ comes from transforming between Eulerian and Lagrangian coordinates in spherical geometry. The quantity $R_L$ is the Lagrangian radius, defined so that equal increments in $R_L^3$ correspond to equal mass shells.
+
+The code handles shocks using von Neumann-Richtmyer artificial viscosity~\cite{VNR1950}. This adds a pseudo-pressure in regions of compression that smears the shock over a few zones. Without this treatment, the explicit integration scheme would develop spurious oscillations near discontinuities.
 
 \subsection{Time Step Control}
 
-The code uses the W stability parameter to control the time step:
+The explicit integration scheme is only stable if the time step is small enough. The code enforces this through a stability parameter $W$ that combines two constraints,
 \begin{equation}
 W = C_{sc} E \left(\frac{\Delta t}{\Delta R}\right)^2 + 4 C_{vp} \frac{|\Delta V|}{V}
+\label{eq:W}
 \end{equation}
-When W exceeds 0.3, the time step is halved. This combines a CFL-type constraint with a viscosity constraint, ensuring stability of the explicit scheme.
+The first term is a CFL-type constraint. It involves the internal energy $E$, the time step $\Delta t$, and the zone size $\Delta R$. The second term is a viscosity constraint involving the relative volume change $\Delta V / V$. The constants $C_{sc}$ and $C_{vp}$ are of order unity. If $W$ exceeds 0.3 in any zone, the time step is halved.
 
-\section{Implementation Correspondence}
+\section{Code Structure}
 
-Table~\ref{tab:modules} maps our source files to the original order numbers. The 1959 code uses statement labels (``orders'') as branch targets; we translate these into subroutine calls while preserving the underlying logic.
+Table~\ref{tab:modules} shows how our source files correspond to the original order numbers. The 1959 code used statement labels (called ``orders'') for branching. We have translated these into subroutine calls while keeping the same logic.
 
 \begin{table}[t]
-\caption{Source file correspondence with ANL-5977 order numbers.}
+\caption{Mapping between our source files and the original order numbers from ANL-5977.}
 \label{tab:modules}
 \begin{ruledtabular}
 \begin{tabular}{ll}
@@ -75,84 +85,108 @@ Table~\ref{tab:modules} maps our source files to the original order numbers. The
 \end{ruledtabular}
 \end{table}
 
-\section{Control Logic Details}
 
-Most of our debugging effort went into the adaptive control logic. The 1959 code adjusts two key parameters on the fly: the time step $\Delta t$, and NS4, the number of hydrodynamics cycles per neutronics cycle. Getting both right proved essential.
 
-\subsection{NS4 Adjustment}
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.65\textwidth]{analysis/figures/geneva10_combined_comparison.png}
+\caption{Comparison with the 1959 reference data for the Geneva~10 benchmark. Solid lines are from our implementation. Open circles are digitized from ANL-5977. The panels show total energy release, relative power, the inverse period $\alpha$, and the stability parameter $W$.}
+\label{fig:geneva10}
+\end{figure*}
 
-The parameter NS4 controls how often the expensive neutronics calculation runs. When reactivity changes slowly, NS4 can be large (many hydro steps between neutronics updates). When reactivity changes rapidly---as during shutdown---NS4 must decrease to keep the neutronics current.
 
-The 1959 code tracks this through the ratio
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.65\textwidth]{analysis/figures/geneva10_spatial_profiles.png}
+    \caption{Spatial profiles at five times during the Geneva~10 transient. These plots show the internal structure of the excursion that is not visible in the integrated quantities reported in ANL-5977.}
+    \label{fig:spatial}
+    \end{figure*}
+    
+\section{Adaptive Control Logic}
+
+Most of our debugging time went into the adaptive control logic. The 1959 code adjusts both the time step $\Delta t$ and a parameter called NS4, which controls how many hydrodynamics cycles run between neutronics updates. Getting both of these right was essential for matching the reference results.
+
+\subsection{The NS4 Parameter}
+
+The neutronics calculation is expensive. When reactivity changes slowly, the code can run many hydrodynamics cycles between neutronics updates. When reactivity changes rapidly, as it does during shutdown, the neutronics must run more often.
+
+The code decides this by computing a dimensionless measure of how fast $\alpha$ is changing,
 \begin{equation}
 Z = \frac{|\alpha_P - \alpha|}{\alpha_O + 3\epsilon_\alpha}
+\label{eq:Z}
 \end{equation}
-where $\alpha_P$ is the previous value and $\alpha_O$ is the running maximum. The adjustment rules (Orders 9015--9045): if $Z < \eta_3$, increment NS4; if $Z > 3\eta_3$, decrement it; if $Z > 6\eta_3$, reset NS4 to 1. When NS4 is already 1 and $Z$ remains large, the time step itself must be halved.
+The numerator is the absolute change in $\alpha$ since the last neutronics calculation. The denominator normalizes by the running maximum $\alpha_O$ plus a small tolerance $3\epsilon_\alpha$. This prevents division by zero and gives a scale-independent measure of the rate of change.
 
-We initially missed this logic entirely. The result: our $\alpha$ went four times more negative than the reference during shutdown, because we weren't triggering neutronics fast enough to track the rapid reactivity changes.
+The adjustment logic from Orders 9015 through 9045 works as follows. If $Z < \eta_3$, NS4 is incremented because $\alpha$ is changing slowly. If $Z > 3\eta_3$, NS4 is decremented because $\alpha$ is changing faster. If $Z > 6\eta_3$, NS4 is reset to 1 because $\alpha$ is changing very rapidly. If NS4 is already 1 and $Z$ is still large, the time step itself is halved.
+
+We initially missed this logic entirely. As a result, our $\alpha$ went about four times more negative than the reference during shutdown. We were simply not running the neutronics often enough to track the rapid reactivity changes.
 
 \subsection{The NL Counter}
 
-Time step doubling is governed by a countdown counter NL (Orders 9270--9274). After any timestep change, NL resets to 64. It decrements each cycle, and doubling is only permitted when NL reaches zero and other stability criteria are satisfied. This prevents the code from oscillating between halving and doubling.
+Once the time step has been halved, the code does not immediately allow it to double again. A counter called NL (from Orders 9270 through 9274) governs this. After any time step change, NL is reset to 64. It decrements each cycle. Doubling is only permitted when NL reaches zero and other stability criteria are satisfied. This prevents the code from oscillating between halving and doubling.
 
-\subsection{DELTP Time Centering}
+\subsection{Time Centering}
 
-The original code uses a previous-timestep value DELTP for velocity updates, with special centering during step changes:
-\begin{itemize}
-\item After halving: DELTP $\leftarrow 0.75 \times \Delta t$
-\item After doubling: DELTP $\leftarrow 1.5 \times \Delta t$
-\end{itemize}
-This detail appears in Orders 9281 and 9290. Missing it introduces small but systematic errors in the hydrodynamics.
+The original code uses a quantity called DELTP for the velocity updates. This is the previous time step value, but with special adjustments during step changes. After halving, DELTP is set to $0.75 \times \Delta t$. After doubling, DELTP is set to $1.5 \times \Delta t$. These factors provide proper time centering for second-order accuracy. The detail appears in Orders 9281 and 9290. Missing it introduces small but cumulative errors in the hydrodynamics.
 
 \subsection{Shutdown Detection}
 
-When the total energy $Q$ begins decreasing (i.e., $Q < Q'$ where $Q'$ is the previous value) while $\alpha < 0$ and the reactor was previously supercritical, the code sets NS4 to 30000 (Orders 9061--9066). This forces extremely fine resolution during shutdown to capture the dynamics accurately.
+When the total deposited energy $Q$ starts decreasing while $\alpha$ is negative and the reactor was previously supercritical, the code recognizes that shutdown has begun. It then sets NS4 to 30000 (Orders 9061 through 9066), which forces very fine temporal resolution during the shutdown phase. The condition $Q < Q'$, where $Q'$ is the value from the previous cycle, indicates that the reactor has passed peak power.
 
-\section{Validation}
+\section{Validation Results}
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{analysis/figures/geneva10_combined_comparison.png}
-\caption{Comparison with 1959 reference data for the Geneva~10 benchmark. Solid lines: our implementation. Circles: digitized from ANL-5977. The four panels show total energy, power, inverse period $\alpha$, and the W stability parameter.}
-\label{fig:geneva10}
-\end{figure}
+We validated our implementation against the Geneva~10 benchmark. This test problem was presented at the 1958 Second International Conference on the Peaceful Uses of Atomic Energy. It models a prompt supercritical excursion in a 10-zone spherical core of enriched uranium with an initial radius of 8.7~cm. The initial reactivity parameter is $\alpha_0 = 0.0131$~$\mu$s$^{-1}$, giving a period of about 76~$\mu$s. The calculation runs for 300~$\mu$s, during which nuclear heating causes expansion that eventually terminates the excursion.
 
-Figure~\ref{fig:geneva10} compares our results with the Geneva~10 benchmark data from ANL-5977. The agreement is quite good across all four quantities. Total energy $Q_P$ matches within 2.5\%, power within about 10\%, and the timing of shutdown agrees to better than 1\%.
+Figure~\ref{fig:geneva10} compares our results with the data from ANL-5977. The agreement is good across all four quantities. Total energy matches within about 2.5\%. Power matches within about 10\%. The timing of shutdown agrees to better than 1\%.
 
-The remaining discrepancies likely reflect: (1) our digitization errors when extracting the 1959 reference data from the published figures, (2) possible differences in how we handle edge cases not fully specified in the documentation, and (3) accumulated roundoff differences between 1959 floating-point arithmetic and modern IEEE~754.
-
-Table~\ref{tab:validation} summarizes the quantitative comparison at $t = 300$~$\mu$s.
+Table~\ref{tab:validation} gives specific values at the end of the calculation.
 
 \begin{table}[h]
-\caption{Comparison at $t = 300$~$\mu$s.}
+\caption{Comparison of results at $t = 300$~$\mu$s.}
 \label{tab:validation}
 \begin{ruledtabular}
 \begin{tabular}{lccc}
-\textbf{Quantity} & \textbf{Reference} & \textbf{Simulation} & \textbf{Difference} \\
+\textbf{Quantity} & \textbf{Reference} & \textbf{This Work} & \textbf{Difference} \\
 \midrule
 $Q_P$ ($10^{12}$ erg) & 7283 & 7462 & 2.5\% \\
 Power (relative) & 45.2 & 41.1 & 9\% \\
-$\alpha$ ($\mu$s$^{-1}$) & $-0.86 \times 10^{-3}$ & $-2.5 \times 10^{-3}$ & --- \\
+$\alpha$ ($\mu$s$^{-1}$) & $-0.86 \times 10^{-3}$ & $-2.5 \times 10^{-3}$ & n/a \\
 \end{tabular}
 \end{ruledtabular}
 \end{table}
 
-\section{Lessons Learned}
+The remaining discrepancies probably come from three sources. First, we extracted the reference data by digitizing the figures in ANL-5977, which introduces some error. Second, the documentation does not fully specify every edge case, so we may handle some details differently. Third, floating-point arithmetic on the IBM-704 differed from modern IEEE~754 arithmetic, and small roundoff differences accumulate over thousands of time steps.
 
-Three observations from this exercise seem worth recording.
+\section{Spatial Profiles}
 
-First, the adaptive control logic in the 1959 code is surprisingly sophisticated. The interplay between NS4 adjustment, NL counting, and timestep control forms a tightly coupled system that keeps the calculation stable and accurate across a wide range of conditions. Modern codes often handle these issues differently, but the underlying problems---when to update expensive physics, when to refine the timestep---remain the same.
+One advantage of having a working reproduction of the code is that we can examine quantities that were not reported in the original publication. Figure~\ref{fig:spatial} shows the evolution of spatial profiles during the transient. These plots reveal the internal structure of the excursion in a way that the integrated quantities in Figure~\ref{fig:geneva10} cannot.
 
-Second, reproducing historical calculations requires attention to details that may not seem important on first reading. The DELTP time-centering, for example, appears as a minor implementation detail but affects the accuracy of the entire hydrodynamics evolution.
+Panel (a) shows the radial expansion as a function of initial position. By plotting the change in radius rather than the absolute radius, the expansion becomes clearly visible. The outer zones expand more than the inner zones, with displacements reaching several centimeters by $t = 280$~$\mu$s. This expansion is what ultimately shuts down the chain reaction by reducing the density and increasing neutron leakage.
 
-Third, the original documentation in ANL-5977, while thorough, leaves some ambiguities. The flow diagrams were essential for resolving these. Future historical reproduction efforts would benefit from similar primary-source verification.
+Panel (b) shows the temperature profile at different times. The temperature is highest in the center of the core, where the fission rate is largest. As the transient progresses, the temperature rises throughout the core, reaching peak values of nearly 1~eV (about 11,000~K) in the central region. The temperature evolution is the most dramatic of the four quantities shown.
 
-\section{Conclusions}
+Panel (c) shows the percent change in density from the initial state. The density decreases throughout the core as the material expands. The reduction is largest in the outer zones, where the expansion is greatest. By $t = 280$~$\mu$s, the outer zones have lost several percent of their initial density. This density reduction is the primary feedback mechanism that terminates the excursion.
 
-We have implemented a faithful reproduction of the 1959 AX-1 code, verified order-by-order against the original Fortran listing and flow diagrams. The Geneva~10 benchmark results match the published reference data closely. The code and documentation are available for researchers interested in the history of reactor safety analysis or in using AX-1 as a test case for modern methods.
+Panel (d) shows the velocity profile at each time. Material is moving outward everywhere, with the outer zones moving faster than the inner zones. The velocities are small on an absolute scale, on the order of millimeters per microsecond, but they accumulate over the 300~$\mu$s transient to produce the substantial expansion seen in panel (a).
+
+
+
+\section{Observations}
+
+Three things stood out during this work.
+
+First, the adaptive control logic in the 1959 code is more sophisticated than we expected. The coupling between NS4 adjustment, the NL counter, and time step control forms a tightly integrated system. Modern codes often use different approaches, but the underlying problems are the same. You need to decide when to update expensive physics calculations and when to refine the time step.
+
+Second, small implementation details matter more than they might seem. The DELTP time centering looks like a minor point, but getting it wrong affects the accuracy of the entire hydrodynamics evolution.
+
+Third, the flow diagrams in ANL-5977 were essential for this work. The written description in the report, while thorough, left some ambiguities that we could only resolve by studying the diagrams.
+
+\section{Summary}
+
+We have created a working reproduction of the 1959 AX-1 code. Our implementation has been verified against the original Fortran listing and flow diagrams from ANL-5977. The Geneva~10 benchmark results match the published reference data to within a few percent. The code and supporting documentation are available if you would like to examine them further or use them as a starting point for additional work.
 
 \begin{acknowledgments}
-We acknowledge the work of D.~Okrent, J.M.~Cook, D.~Satkus (ANL) and R.B.~Lazarus, M.B.~Wells (LASL) on the original AX-1 code.
+The original AX-1 code was developed by D.~Okrent, J.M.~Cook, and D.~Satkus at Argonne National Laboratory, with contributions from R.B.~Lazarus and M.B.~Wells at Los Alamos Scientific Laboratory.
 \end{acknowledgments}
 
 \begin{thebibliography}{9}

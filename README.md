@@ -1,145 +1,59 @@
-# AX-1 (Modern Fortran) — Phase 3: Toward Research/Engineering Use
+# AX-1 (1959)
 
-This release implements **Phase 3** features for research and engineering applications:
+This is a reproduction of the 1959 AX-1 coupled neutronics-hydrodynamics code
+documented in Argonne National Laboratory report ANL-5977. The code solves
+prompt supercritical reactor transients using S4 discrete ordinates transport,
+Lagrangian hydrodynamics with von Neumann-Richtmyer artificial viscosity, and
+a linear equation of state. It was written in modern Fortran 90+ while
+preserving the original algorithms.
 
-## Phase 3 Features
+## Requirements
 
-- **Reactivity feedback**: Doppler, fuel expansion, and void feedback mechanisms
-- **Time-dependent reactivity**: Static and time-dependent reactivity insertion
-- **Time history output**: P(t), R(t), U(t), α(t), keff(t) and spatial histories
-- **Checkpoint/restart**: Save and restore simulation state
-- **Uncertainty quantification**: Monte Carlo sampling framework for parameter uncertainties
-- **Sensitivity analysis**: Finite difference sensitivity coefficients (∂k/∂Σ, ∂α/∂Σ)
-- **Validation framework**: Bethe-Tait benchmark and code-to-code comparison tools
+The code requires a Fortran compiler supporting Fortran 2008 and GNU Make.
+On Debian or Ubuntu systems, install these with:
 
-## Phase 2 Features (Previous Release)
+    sudo apt install gfortran make
 
-- **S_n quadrature**: Support for S4, S6, and S8 angular discretization
-- **DSA acceleration**: Diffusion Synthetic Acceleration to speed up transport iterations
-- **Upscatter control**: Configurable upscatter treatment (allow/neglect/scale)
-- **HLLC-like hydro**: Replaced artificial viscosity with Riemann-solver-inspired interface pressure
-- **HDF5 XS stub**: Framework for temperature-dependent cross sections from NJOY/OpenMC
+On macOS with Homebrew:
 
-## Build & Run
+    brew install gcc make
 
-```bash
-make
-./ax1 inputs/sample_phase2.deck
-```
+## Building
 
-For Phase 3 features, specify in the deck:
-- `run_uq true` to enable uncertainty quantification
-- `run_sensitivity true` to enable sensitivity analysis
-- `checkpoint_file file.chk` to enable checkpointing
-- `restart_file file.chk` to restart from checkpoint
-- `output_file output` to specify output file prefix
-- `t_end 0.01` to set simulation end time
-- `rho_insert 100.0` to insert reactivity (pcm)
+To compile the 1959 reproduction:
 
-For Phase 2 features, specify in the deck:
-- `Sn 8` (or 4, 6) for angular order
-- `use_dsa true` to enable DSA acceleration
-- `upscatter allow|neglect|scale` for scattering treatment
+    make -f Makefile.1959
 
-## Phase 2 Enhancements
+This produces the executable `ax1_1959`.
 
-### Transport
-- **S_n quadrature**: Flexible S4/S6/S8 angular discretization with Gauss-Legendre points
-- **DSA**: Tridiagonal diffusion correction to accelerate transport sweeps
-- **Upscatter control**: Neglect or scale upscatter in multi-group scattering
+## Running
 
-### Hydrodynamics  
-- **Interface pressure**: HLLC-inspired PVRS (Primitive Variable Riemann Solver) approach for cell interfaces
-- **Slope limiting**: Minmod limiter for gradient-based reconstruction at interfaces (prevents oscillations)
-- **Removed artificial viscosity**: Replaced by pressure-based flux evaluation
+Run the Geneva 10 benchmark with:
 
-### Data
-- **HDF5 framework**: Stub reader for NJOY/OpenMC temperature-dependent cross sections
-- **Input deck**: New `[xslib]` section to specify HDF5 paths
+    ./ax1_1959 inputs/geneve10_transient.inp
 
-## Phase 3 Enhancements
+The simulation writes time series data to `output_time_series.csv` and spatial
+profiles to files named `output_spatial_t*.csv`. A summary is printed to
+standard output.
 
-### Reactivity Feedback
-- **Doppler feedback**: Temperature-dependent reactivity feedback
-- **Fuel expansion**: Density-dependent reactivity feedback
-- **Void feedback**: Void-dependent reactivity feedback
-- **Reactivity calculation**: From k_eff and feedback mechanisms
+To generate comparison plots against the 1959 reference data, run:
 
-### Time History Output
-- **Time history**: P(t), R(t), U(t), α(t), keff(t)
-- **Spatial history**: Radius, velocity, pressure, temperature
-- **CSV format**: Easy to parse and analyze
-- **Configurable frequency**: Output every N steps
+    python3 analysis/compare_geneva10.py
 
-### Checkpoint/Restart
-- **Binary format**: Efficient storage
-- **State save/load**: Complete state restoration
-- **Time history support**: Checkpoint includes history
-- **Restart capability**: Continue from checkpoint
+This reads the simulation output and the digitized reference data from
+`validation/reference_data/` and produces figures in `analysis/figures/`.
 
-### Uncertainty Quantification
-- **Monte Carlo sampling**: Uniform distribution
-- **Parameter perturbation**: Cross sections, EOS, delayed neutrons
-- **Statistics**: Mean, std, min, max, CI
-- **Results output**: CSV format
+## Documentation
 
-### Sensitivity Analysis
-- **Finite differences**: Central difference method
-- **Sensitivity coefficients**: ∂k/∂Σ, ∂α/∂Σ
-- **Multiple parameters**: Cross sections, EOS, delayed neutrons
-- **Results output**: CSV format
+The LaTeX document `AX1_Code_Analysis.tex` describes the physics, the
+correspondence between the modern code and the original 1959 order numbers,
+and the validation results. Compile it with:
 
-### Validation Framework
-- **Bethe-Tait benchmark**: Fast reactor transient problem
-- **Code-to-code comparison**: Framework for comparing with other codes
-- **Standardized format**: Easy comparison
+    pdflatex AX1_Code_Analysis.tex
 
-## Tests
+## References
 
-Run the comprehensive test suite:
+H. H. Hummel et al., "AX-1, A Computing Program for Coupled
+Neutronics-Hydrodynamics Calculations on the IBM-704," ANL-5977,
+Argonne National Laboratory, January 1959.
 
-```bash
-make
-./tests/smoke_test.sh           # Phase 1 compatibility
-./tests/phase2_attn.sh          # Phase 2 attenuation test (S8, DSA)
-./tests/phase2_shocktube.sh     # Phase 2 hydrodynamics test
-./tests/test_phase3.sh          # Phase 3 feature tests
-./tests/test_uq_sensitivity.sh  # UQ and sensitivity tests
-./validation/validate_bethe_tait.sh  # Bethe-Tait validation
-./validation/code_to_code_comparison.sh  # Code-to-code comparison
-```
-
-## Notes
-
-- The DSA correction applies a single Gauss-Seidel sweep on the scalar flux per energy group
-- HLLC interface pressure uses PVRS (Primitive Variable Riemann Solver) for pressure estimation at cell faces
-- Slope limiting uses the minmod function to compute limited gradients for second-order accurate interface reconstruction
-- Upscatter control allows suppression (`neglect`) or scaling (`scale`) of upward energy transfers
-- S_n quadrature uses Gauss-Legendre abscissae optimized for slab geometry
-
-## Benchmarks
-
-A comprehensive benchmark suite is available in `benchmarks/`:
-
-- **Godiva Criticality**: Fast reactor criticality problem
-- **SOD Shock Tube**: Riemann problem for hydrodynamics validation
-- **Upscatter Treatment**: Tests upscatter control feature
-- **DSA Convergence**: Demonstrates acceleration effectiveness
-
-Run all benchmarks:
-```bash
-./benchmarks/run_benchmarks.sh
-```
-
-See `benchmarks/README.md` for detailed descriptions and expected results.
-
-## Testing
-
-For comprehensive testing instructions, see `TESTING_PHASE2.md`.
-
-## Phase 1 Features (Retained)
-
-- **α‑eigenvalue solver** via root‑finding on k(α)
-- **Delayed neutrons** (6 groups)
-- **Controls**: W‑criterion + CFL stability
-- **EOS tables**: CSV tables with bilinear interpolation
